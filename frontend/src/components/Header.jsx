@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import siteLogo from '../assets/site_logo.png';
 
 const Header = ({ searchQuery, onSearchChange }) => {
     const { user, logout } = useAuth();
@@ -52,9 +53,9 @@ const Header = ({ searchQuery, onSearchChange }) => {
                     <div
                         className="header-logo"
                         onClick={() => navigate('/')}
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                     >
-                        📰 Banca
+                        <img src={siteLogo} alt="Banca" style={{ height: '32px', width: 'auto' }} />
                     </div>
 
                     <nav className="header-nav">
