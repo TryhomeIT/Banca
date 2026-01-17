@@ -1,0 +1,21 @@
+services:
+  banca:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: banca:latest
+    container_name: banca
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      # Application Configuration
+      - DATA_DIR=/app/storage
+      # Pass these to the backend at runtime
+      - CONVEX_URL=${CONVEX_URL}
+      - CONVEX_DEPLOY_KEY=${CONVEX_DEPLOY_KEY}
+      # Optional: Set a specific secret key for the app
+      - SECRET_KEY=${SECRET_KEY:-changeme_in_production}
+    volumes:
+      # Map a single local directory to the container's storage
+      - ./data:/app/storage
