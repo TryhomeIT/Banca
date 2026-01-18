@@ -175,6 +175,49 @@ async def stop_telegram_bot():
         
     logger.info("✅ Bot stopped")
 
+async def bot_watchdog_loop(interval_seconds: int = 60):
+    """
+    Background task to ensure the bot is always running if configured.
+    Restarts the bot if it crashes.
+    """
+    logger.info(f"🐕 Starting Telegram Bot Watchdog (interval: {interval_seconds}s)")
+    
+    while True:
+        try:
+            # 1. Check configuration
+            from ..database import SessionLocal
+            from .settings import settings_service
+            db = SessionLocal()
+            try:
+                db_settings = settings_service.get_all_settings(db)
+                is_configured = (
+                    db_settings.get('TELEGRAM_API_ID') and 
+                    db_settings.get('TELEGRAM_API_HASH') and 
+                    db_settings.get('TELEGRAM_PHONE')
+                )
+            finally:
+                db.close()
+
+            # 2. Check current status
+            status = get_bot_status()
+            
+            if is_configured:
+                if not status["is_running"]:
+                    logger.info("🤖 Bot configured but not running. Starting...")
+                    try:
+                        await start_telegram_bot()
+                    except Exception as e:
+                        logger.error(f"Failed to start bot in watchdog: {e}")
+            else:
+                if status["is_running"]:
+                    logger.info("⚠️ Bot running but configuration removed. Stopping...")
+                    await stop_telegram_bot()
+                    
+        except Exception as e:
+            logger.error(f"Error in Bot Watchdog loop: {e}")
+            
+        await asyncio.sleep(interval_seconds)
+
 # Variables for compatibility with admin.py imports
 bot_running = False # This property is a bit tricky now, admin.py uses it.
 # We need to make bot_running a property or update admin.py.

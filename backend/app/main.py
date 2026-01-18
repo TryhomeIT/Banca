@@ -8,41 +8,20 @@ from .database import engine, Base, SessionLocal
 from .routers import auth_router, publications_router, admin_router
 from .config import settings
 from .services.file_watcher import watch_folders, scan_all_folders
+from .services.telegram_bot import bot_watchdog_loop
 import logging
 from logging.handlers import RotatingFileHandler
 
-# Configure logging
-log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-log_file = settings.LOGS_DIR / "app.log"
+# ... (logging config)
 
-# Main handler
-file_handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
-file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.INFO)
-
-# Stream handler for console
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(logging.INFO)
-
-# Root logger setup
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-root_logger.addHandler(file_handler)
-root_logger.addHandler(stream_handler)
-
-logger = logging.getLogger(__name__)
-
-# Create database tables
-Base.metadata.create_all(bind=engine)
-
-# Background task reference
+# Background task references
 watcher_task = None
+bot_watchdog_task = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle - startup and shutdown."""
-    global watcher_task
+    global watcher_task, bot_watchdog_task
     
     # Startup
     logger.info("🚀 Starting Jornais Digital Newsstand...")
@@ -60,12 +39,15 @@ async def lifespan(app: FastAPI):
     
     # Start background folder watcher (includes initial scan)
     # Using a small delay to allow uvicorn to finish binding before heavy work starts
-    async def start_watcher_with_delay():
+    async def start_background_tasks():
         await asyncio.sleep(2)
-        await watch_folders(interval_seconds=60)
+        # 1. Folder Watcher
+        asyncio.create_task(watch_folders(interval_seconds=60))
+        # 2. Telegram Bot Watchdog
+        asyncio.create_task(bot_watchdog_loop(interval_seconds=60))
 
-    watcher_task = asyncio.create_task(start_watcher_with_delay())
-    logger.info("👀 Folder watcher scheduled (starts in 2s)")
+    watcher_task = asyncio.create_task(start_background_tasks())
+    logger.info("👀 Background tasks scheduled (starts in 2s)")
     
     yield  # Application is running
     
