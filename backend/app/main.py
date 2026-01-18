@@ -7,12 +7,35 @@ from fastapi.staticfiles import StaticFiles
 from .database import engine, Base, SessionLocal
 from .routers import auth_router, publications_router, admin_router
 from .config import settings
-from .services.file_watcher import watch_folders, scan_all_folders
+from .services.file_watcher import watch_folders
 from .services.telegram_bot import bot_watchdog_loop
 import logging
 from logging.handlers import RotatingFileHandler
 
-# ... (logging config)
+# Configure logging
+log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_file = settings.LOGS_DIR / "app.log"
+
+# Main handler
+file_handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(logging.INFO)
+
+# Stream handler for console
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(log_formatter)
+stream_handler.setLevel(logging.INFO)
+
+# Root logger setup
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(file_handler)
+root_logger.addHandler(stream_handler)
+
+logger = logging.getLogger(__name__)
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 # Background task references
 watcher_task = None
@@ -37,8 +60,7 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
     
-    # Start background folder watcher (includes initial scan)
-    # Using a small delay to allow uvicorn to finish binding before heavy work starts
+    # Start background tasks
     async def start_background_tasks():
         await asyncio.sleep(2)
         # 1. Folder Watcher
