@@ -124,16 +124,14 @@ const PublicationCard = ({ publication, onClick, showProgress = false, onRemove 
                             })}
                         </span>
                     )}
-                    {publication.publication_date && publication.category && (
-                        <span>•</span>
-                    )}
-                    {publication.category && <span>{publication.category}</span>}
-                    {publication.page_count > 0 && (
-                        <>
-                            {(publication.category || publication.publication_date) && <span>•</span>}
-                            <span>{publication.page_count} pages</span>
-                        </>
-                    )}
+                    <span className="desktop-only">
+                        {publication.page_count > 0 && (
+                            <>
+                                {publication.publication_date && <span>•</span>}
+                                <span>{publication.page_count} pages</span>
+                            </>
+                        )}
+                    </span>
                 </div>
 
                 {showProgress && progress > 0 && (

@@ -55,6 +55,7 @@ class PublicationResponse(PublicationBase):
 class PublicationWithProgress(PublicationResponse):
     current_page: Optional[int] = 1
     last_read_at: Optional[datetime] = None
+    is_favorite: Optional[bool] = False
 
 # Reading Progress schemas
 class ReadingProgressUpdate(BaseModel):

@@ -76,6 +76,7 @@ const resources = {
             "auth.signUp": "Sign Up",
             "auth.welcome": "Welcome to Banca",
             "auth.welcomeBack": "Welcome back",
+            "auth.changePassword": "Change Password",
 
             // Common
             "common.save": "Save",
@@ -167,6 +168,7 @@ const resources = {
             "auth.signUp": "Criar Conta",
             "auth.welcome": "Bem-vindo ao Banca",
             "auth.welcomeBack": "Bem-vindo de volta",
+            "auth.changePassword": "Mudar Palavra-passe",
 
             // Common
             "common.save": "Guardar",
@@ -258,6 +260,7 @@ const resources = {
             "auth.signUp": "Crear Cuenta",
             "auth.welcome": "Bienvenido a Banca",
             "auth.welcomeBack": "Bienvenido de nuevo",
+            "auth.changePassword": "Cambiar Contraseña",
 
             // Common
             "common.save": "Guardar",
@@ -349,6 +352,7 @@ const resources = {
             "auth.signUp": "Account Aanmaken",
             "auth.welcome": "Welkom bij Banca",
             "auth.welcomeBack": "Welkom terug",
+            "auth.changePassword": "Wachtwoord Wijzigen",
 
             // Common
             "common.save": "Opslaan",

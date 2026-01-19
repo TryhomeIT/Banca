@@ -57,3 +57,17 @@ class SystemSettings(Base):
     description = Column(String(255), nullable=True)
     category = Column(String(50), default="general") # general, telegram, ai
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class UserFavorite(Base):
+    """Stores user's favorite publication titles (not IDs, since daily publications create new records)."""
+    __tablename__ = "user_favorites"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    publication_title = Column(String(255), nullable=False)  # Title like "Público LX", "DN"
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="favorites")
+
+# Add favorites relationship to User model
+User.favorites = relationship("UserFavorite", back_populates="user", cascade="all, delete-orphan")

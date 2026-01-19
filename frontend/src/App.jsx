@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Reader from './pages/Reader';
 import Settings from './pages/Settings';
 import Logs from './pages/Logs';
+import Favorites from './pages/Favorites';
 import './i18n'; // Import i18n configuration
 
 // Protected Route wrapper
@@ -87,6 +88,11 @@ function App() {
           <Route path="/settings" element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          } />
+          <Route path="/favorites" element={
+            <ProtectedRoute>
+              <Favorites />
             </ProtectedRoute>
           } />
           <Route path="/logs" element={

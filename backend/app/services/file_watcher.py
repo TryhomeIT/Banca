@@ -335,8 +335,7 @@ def scan_all_folders(force: bool = False) -> Dict[str, int]:
     }
     
     total = sum(results.values())
-    if total > 0:
-        logger.info(f"📚 Scan complete. Imported {total} items.")
+    logger.info(f"📚 Scan complete. Imported {total} new items.")
     
     return results
 

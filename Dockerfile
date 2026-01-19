@@ -69,9 +69,3 @@ EXPOSE 80
 
 # Start everything
 CMD ["/app/start.sh"]
-
-# Expose only port 80
-EXPOSE 80
-
-# Start everything
-CMD ["/app/start.sh"]

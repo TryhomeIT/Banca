@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from "convex/react";
-import { api as convexApi } from "../../convex/_generated/api";
 import api from '../services/api';
 import Header from '../components/Header';
 import PublicationCard from '../components/PublicationCard';
@@ -12,16 +10,39 @@ const Dashboard = () => {
     const { user } = useAuth();
     const { t } = useTranslation();
     const navigate = useNavigate();
-    
+
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('newspaper'); // Default to newspaper
     const [recentlyRead, setRecentlyRead] = useState([]);
-    
-    // Real-time publications from Convex
-    // Since 'all' is gone, we always filter by category
-    const convexPublications = useQuery(convexApi.publications.list, {
-        category: activeCategory
-    });
+    const [publications, setPublications] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch local publications
+    const fetchPublications = async () => {
+        try {
+            setLoading(true);
+            const params = { limit: 500 }; // Request up to 500 items
+            if (searchQuery) {
+                params.search = searchQuery;
+            } else {
+                params.category = activeCategory;
+            }
+            const response = await api.get('/publications/', { params });
+            setPublications(response.data);
+        } catch (error) {
+            console.error('Failed to fetch publications:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Effect for fetching
+    useEffect(() => {
+        fetchPublications();
+        // Optional: Poll for updates every 30s
+        const interval = setInterval(fetchPublications, 30000);
+        return () => clearInterval(interval);
+    }, [activeCategory, searchQuery]);
 
     const fetchRecent = async () => {
         try {
@@ -35,11 +56,6 @@ const Dashboard = () => {
     useEffect(() => {
         fetchRecent();
     }, []);
-
-    // Filter by search query (client-side for now, or could be moved to Convex)
-    const filteredPublications = convexPublications ? convexPublications.filter(pub => 
-        pub.title.toLowerCase().includes(searchQuery.toLowerCase())
-    ) : [];
 
     const handleOpenReader = (publicationId) => {
         navigate(`/read/${publicationId}`);
@@ -60,7 +76,7 @@ const Dashboard = () => {
         { id: 'others', label: t('dashboard.others') },
     ];
 
-    if (convexPublications === undefined) {
+    if (loading && publications.length === 0) {
         return (
             <>
                 <Header searchQuery={searchQuery} onSearchChange={setSearchQuery} />
@@ -118,11 +134,11 @@ const Dashboard = () => {
                                 </div>
 
                                 <div className="publication-grid">
-                                    {filteredPublications.map(pub => (
+                                    {publications.map(pub => (
                                         <PublicationCard
-                                            key={pub._id}
+                                            key={pub.id}
                                             publication={pub}
-                                            onClick={() => handleOpenReader(pub.external_id || pub.id)}
+                                            onClick={() => handleOpenReader(pub.id)}
                                         />
                                     ))}
                                 </div>
@@ -141,13 +157,13 @@ const Dashboard = () => {
                                 </button>
                             </div>
 
-                            {filteredPublications.length > 0 ? (
+                            {publications.length > 0 ? (
                                 <div className="publication-grid">
-                                    {filteredPublications.map(pub => (
+                                    {publications.map(pub => (
                                         <PublicationCard
-                                            key={pub._id}
+                                            key={pub.id}
                                             publication={pub}
-                                            onClick={() => handleOpenReader(pub.external_id || pub.id)}
+                                            onClick={() => handleOpenReader(pub.id)}
                                         />
                                     ))}
                                 </div>

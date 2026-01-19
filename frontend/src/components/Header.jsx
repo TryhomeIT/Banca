@@ -11,6 +11,9 @@ const Header = ({ searchQuery, onSearchChange }) => {
     const navigate = useNavigate();
     const [othersCount, setOthersCount] = useState(0);
     const [showLangMenu, setShowLangMenu] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
     const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -21,7 +24,25 @@ const Header = ({ searchQuery, onSearchChange }) => {
         { code: 'nl', name: 'Nederlands', flag: '🇳🇱' }
     ];
 
-    const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[1];
+    // Get base language code (handle cases like 'nl-NL' or 'pt-PT')
+    const baseLang = i18n.language?.split('-')[0] || 'pt';
+    const currentLanguage = languages.find(lang => lang.code === baseLang) || languages[1];
+
+    const handlePasswordChange = async (e) => {
+        e.preventDefault();
+        if (passwordData.new !== passwordData.confirm) return alert('Passwords do not match');
+        try {
+            await api.post('/auth/change-password', {
+                current_password: passwordData.current,
+                new_password: passwordData.new
+            });
+            alert('Password changed successfully');
+            setShowPasswordModal(false);
+            setPasswordData({ current: '', new: '', confirm: '' });
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Failed to change password');
+        }
+    };
 
     useEffect(() => {
         if (user?.is_admin) {
@@ -111,6 +132,15 @@ const Header = ({ searchQuery, onSearchChange }) => {
                                 )}
                             </div>
 
+                            {/* Favorites Button */}
+                            <button
+                                className="btn btn-secondary btn-icon"
+                                onClick={() => navigate('/favorites')}
+                                title="Manage Favorites"
+                            >
+                                ⭐
+                            </button>
+
                             {/* Settings Button */}
                             {user?.is_admin && (
                                 <button
@@ -132,10 +162,25 @@ const Header = ({ searchQuery, onSearchChange }) => {
                             )}
 
                             {/* User Menu */}
-                            <div className="header-user" onClick={logout} title="Click to logout">
-                                <div className="header-avatar">
-                                    {user?.username?.charAt(0).toUpperCase() || 'U'}
+                            <div style={{ position: 'relative' }}>
+                                <div className="header-user" onClick={() => setShowUserMenu(!showUserMenu)} title={user?.username}>
+                                    <div className="header-avatar">
+                                        {user?.username?.charAt(0).toUpperCase() || 'U'}
+                                    </div>
                                 </div>
+                                {showUserMenu && (
+                                    <div className="lang-dropdown" style={{ minWidth: '180px' }}>
+                                        <button className="lang-btn" onClick={() => { setShowPasswordModal(true); setShowUserMenu(false); }}>
+                                            <span>🔑</span>
+                                            <span>{t('auth.changePassword') || 'Change Password'}</span>
+                                        </button>
+                                        <div className="mobile-drawer-divider" style={{ margin: '4px 0' }} />
+                                        <button className="lang-btn" style={{ color: 'var(--color-error)' }} onClick={logout}>
+                                            <span>🚪</span>
+                                            <span>{t('common.logout')}</span>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -166,6 +211,16 @@ const Header = ({ searchQuery, onSearchChange }) => {
                 </div>
 
                 <div className="mobile-drawer-content">
+                    <button className="mobile-drawer-item" onClick={() => { setShowPasswordModal(true); setIsMenuOpen(false); }}>
+                        <span>🔑</span>
+                        {t('auth.changePassword') || 'Change Password'}
+                    </button>
+
+                    <button className="mobile-drawer-item" onClick={() => { navigate('/favorites'); setIsMenuOpen(false); }}>
+                        <span>⭐</span>
+                        Favorites
+                    </button>
+
                     {user?.is_admin && (
                         <button className="mobile-drawer-item" onClick={() => { navigate('/settings'); setIsMenuOpen(false); }}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -241,6 +296,56 @@ const Header = ({ searchQuery, onSearchChange }) => {
                                 <path d="M18 6L6 18M6 6l12 12" />
                             </svg>
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Change Password Modal */}
+            {showPasswordModal && (
+                <div className="modal-overlay" style={{ zIndex: 10001 }}>
+                    <div className="modal">
+                        <div className="modal-header">
+                            <h4 className="modal-title">Change Password</h4>
+                            <button className="modal-close" onClick={() => setShowPasswordModal(false)}>✕</button>
+                        </div>
+                        <form onSubmit={handlePasswordChange}>
+                            <div className="modal-body">
+                                <div className="input-group">
+                                    <label>Current Password</label>
+                                    <input
+                                        className="input"
+                                        type="password"
+                                        required
+                                        value={passwordData.current}
+                                        onChange={e => setPasswordData({ ...passwordData, current: e.target.value })}
+                                    />
+                                </div>
+                                <div className="input-group">
+                                    <label>New Password</label>
+                                    <input
+                                        className="input"
+                                        type="password"
+                                        required
+                                        value={passwordData.new}
+                                        onChange={e => setPasswordData({ ...passwordData, new: e.target.value })}
+                                    />
+                                </div>
+                                <div className="input-group">
+                                    <label>Confirm New Password</label>
+                                    <input
+                                        className="input"
+                                        type="password"
+                                        required
+                                        value={passwordData.confirm}
+                                        onChange={e => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowPasswordModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Update Password</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

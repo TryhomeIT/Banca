@@ -35,7 +35,6 @@ from pyrogram.errors import FloodWait, RPCError
 from pdf2image import convert_from_path
 from telegram_review_handler import send_file_for_review, setup_callback_handlers, scan_existing_others_files, extract_publication_name, process_ai_queue
 from komga_integration import schedule_komga_scan
-from google import genai
 
 # Load environment variables
 load_dotenv()
@@ -146,6 +145,7 @@ def get_publication_category(name, config):
     return None
 
 def parse_filename(filename):
+    if not filename: return None, None
     from urllib.parse import unquote
     match = re.match(r'\((\d{8})-PT\)[\s%20]*(.+)\.pdf$', unquote(filename), re.IGNORECASE)
     if match:
@@ -192,47 +192,131 @@ async def resolve_source_chat():
     logger.error(f"❌ Could not find channel {RAW_SOURCE_ID} in your chat list!")
     return None
 
-async def process_message(message, client):
-    if not message.document or message.document.mime_type != 'application/pdf': return
+async def process_message(message, client, config=None):
+    """Processes a single message from Telegram."""
+    if not message.document: return "skipped"
+    if message.document.mime_type != 'application/pdf': return "skipped"
     
-    fname = message.document.file_name
+    if config is None:
+        config = load_publications_config()
+    
+    fname = message.document.file_name or "unnamed.pdf"
     fsize = message.document.file_size
-    config = load_publications_config()
+    caption = message.caption or ""
     
+    # Log every PDF found for transparency
+    logger.info(f"🧐 Found PDF: {fname} ({fsize} bytes)")
+    if caption: logger.info(f"   Caption: {caption[:100]}...")
+    
+    # 1. Try standard parsing (format: (YYYYMMDD-PT) Name.pdf)
     pub_name, date_fmt = parse_filename(fname)
+    is_keyword_match = False
+    
+    # 2. If not standard, try Keyword matching (Flexible)
     if not pub_name:
+        # Create a clean string for matching: replace underscores, dots, hyphens with spaces
+        search_target = f"{fname} {caption}".lower()
+        search_target_clean = search_target.replace('_', ' ').replace('.', ' ').replace('-', ' ')
+        
         for kw in config.get('keywords', []):
-            if kw.lower() in fname.lower():
+            kw_clean = kw.lower().strip()
+            kw_no_spaces = kw_clean.replace(" ", "")
+            
+            # We match against both raw and cleaned name to be safe
+            # Also check if the keyword without spaces exists (e.g. "Auto Express" matching "AutoExpress")
+            if (kw_clean in search_target or 
+                kw_clean in search_target_clean or 
+                kw_no_spaces in search_target or 
+                kw_no_spaces in search_target_clean):
+                
                 pub_name = unicodedata.normalize('NFC', kw)
+                is_keyword_match = True
+                logger.info(f"✨ Match found via keyword '{kw}': {fname}")
                 break
     
-    if not pub_name or is_file_already_processed(fname, fsize, date_fmt): return
+    # 3. Handle No Match
+    if not pub_name:
+        logger.info(f"⏭️ No match for: {fname}")
+        return "skipped"
 
+    # 4. Check if already processed
+    if is_file_already_processed(fname, fsize, date_fmt):
+        logger.info(f"⏭️ Already processed: {fname}")
+        return "skipped"
+
+    # 5. Download and Process
     download_path = os.path.join(DOWNLOADS_DIR, fname)
     try:
         logger.info(f"📥 Downloading: {fname}")
-        await client.download_media(message, file_name=download_path)
-        try: convert_from_path(download_path, first_page=1, last_page=1)
-        except: return logger.error(f"❌ Corrupt PDF: {fname}")
+        
+        # Handle FloodWait with automatic retry
+        try:
+            await client.download_media(message, file_name=download_path)
+        except FloodWait as e:
+            wait_time = e.value
+            logger.warning(f"⏳ FloodWait: Telegram requires a {wait_time}s wait. Sleeping...")
+            await asyncio.sleep(wait_time + 5)  # Add buffer
+            logger.info(f"🔄 Retrying download: {fname}")
+            await client.download_media(message, file_name=download_path)
+        
+        # Add small delay between downloads to prevent rate limiting
+        await asyncio.sleep(2)
+        
+        # Verify PDF integrity
+        try: 
+            convert_from_path(download_path, first_page=1, last_page=1)
+        except Exception as e: 
+            logger.error(f"❌ Corrupt PDF skipped: {fname} - {e}")
+            return "error"
 
+        # Determine Category
         cat = get_publication_category(pub_name, config)
         if cat:
             dest = os.path.join(DATA_DIR, cat)
             os.makedirs(dest, exist_ok=True)
+            # Use cleaner name if we have a date
             final_name = f"{pub_name} - {date_fmt}.pdf" if date_fmt else fname
             shutil.copy2(download_path, os.path.join(dest, final_name))
             mark_file_as_processed(fname, fsize, date_fmt, "saved")
             log_activity(final_name, cat)
-            schedule_komga_scan(cat.lower())
-        else:
+            logger.info(f"✅ Saved to {cat}: {final_name}")
+            return "saved_cat"
+        elif is_keyword_match:
             dest = os.path.join(DATA_DIR, 'Others')
             os.makedirs(dest, exist_ok=True)
             shutil.copy2(download_path, os.path.join(dest, fname))
-            await send_file_for_review(client, os.path.join(dest, fname))
-            mark_file_as_processed(fname, fsize, date_fmt, "sent_to_review")
+            mark_file_as_processed(fname, fsize, date_fmt, "saved_via_keyword")
             log_activity(fname, "Others")
+            logger.info(f"✅ Keyword match '{pub_name}', saved to Others: {fname}")
+            return "saved_keyword"
+        else:
+            # Fallback to Others
+            dest = os.path.join(DATA_DIR, 'Others')
+            os.makedirs(dest, exist_ok=True)
+            shutil.copy2(download_path, os.path.join(dest, fname))
+            # Optional: Send to bot for interactive review if logic is present
+            try:
+                await send_file_for_review(client, os.path.join(dest, fname))
+                mark_file_as_processed(fname, fsize, date_fmt, "sent_to_review")
+                return "sent_to_review"
+            except:
+                mark_file_as_processed(fname, fsize, date_fmt, "saved_to_others")
+                return "saved_others"
+            
+            log_activity(fname, "Others")
+            logger.info(f"📂 Category unknown, saved to 'Others': {fname}")
+            
+    except FloodWait as e:
+        # If we still get FloodWait after retry, log and skip this file for now
+        logger.error(f"⏳ FloodWait persists for {fname}. Skipping. Wait required: {e.value}s")
+        return "flood_wait"
+    except Exception as e:
+        logger.error(f"❌ Download failed for {fname}: {e}")
+        return "error"
     finally:
-        if os.path.exists(download_path): os.unlink(download_path)
+        if os.path.exists(download_path): 
+            try: os.unlink(download_path)
+            except: pass
 
 # --- Main Logic ---
 
@@ -245,14 +329,31 @@ async def check_scan_requests():
         target_id = await resolve_source_chat()
         if not target_id: return
         
+        config = load_publications_config()
+        
         if req.get('type') == 'keywords':
             days = req.get('days', 7)
-            logger.info(f"🔍 Scan started: {days} days on {target_id}")
+            logger.info(f"🔍 HISTORY SCAN: {days} days on {target_id}")
+            logger.info(f"⚙️ Loaded Config: {len(config.get('jornais', []))} Newspapers, {len(config.get('revistas', []))} Magazines")
+            logger.info(f"🔑 Active Keywords ({len(config.get('keywords', []))}): {', '.join(config.get('keywords', []))}")
+            
             cutoff = datetime.now() - timedelta(days=days)
-            async for msg in app.get_chat_history(target_id, limit=5000):
+            stats = {"checked": 0, "saved": 0, "keyword": 0, "review": 0, "skipped": 0, "error": 0}
+            
+            async for msg in app.get_chat_history(target_id, limit=30000):
                 if msg.date < cutoff: break
-                await process_message(msg, app)
-            logger.info("✅ Scan complete")
+                status = await process_message(msg, app, config=config)
+                stats["checked"] += 1
+                
+                if status == "saved_cat": stats["saved"] += 1
+                elif status == "saved_keyword": stats["keyword"] += 1
+                elif status == "sent_to_review": stats["review"] += 1
+                elif status == "skipped": stats["skipped"] += 1
+                elif status == "error": stats["error"] += 1
+            
+            logger.info(f"✅ Scan complete. Checked {stats['checked']} messages.")
+            logger.info(f"📊 Summary: {stats['saved']} matched publications, {stats['keyword']} keyword matches, {stats['review']} sent to review. ({stats['skipped']} skipped)")
+            
         elif req.get('type') == 'ai_categorize': await process_ai_queue(app)
         elif req.get('type') == 'others': await scan_existing_others_files(app)
     except Exception as e: logger.error(f"Scan Error: {e}")
@@ -270,8 +371,12 @@ async def main():
     # Resolve ID once on startup to cache it
     source_id = await resolve_source_chat()
     
+    # Live listener
     @app.on_message(filters.chat(source_id) if source_id else filters.private)
-    async def msg_handler(client, message): await process_message(message, client)
+    async def msg_handler(client, message):
+        # Reload config for live messages to ensure latest keywords are used
+        config = load_publications_config()
+        await process_message(message, client, config=config)
 
     setup_callback_handlers(app)
     asyncio.create_task(maintenance_loop())
