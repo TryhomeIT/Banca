@@ -5,7 +5,7 @@ import api from '../services/api';
 import Header from '../components/Header';
 
 const Favorites = () => {
-    const { t } = useTranslation();
+    useTranslation(); // i18n context available for future use
     const navigate = useNavigate();
 
     const [publications, setPublications] = useState([]);
@@ -140,7 +140,7 @@ const FavoriteCard = ({ publication, onToggle }) => {
                     setImageError(true);
                 }
                 setLoading(false);
-            } catch (error) {
+            } catch {
                 if (isMounted) {
                     setImageError(true);
                     setLoading(false);

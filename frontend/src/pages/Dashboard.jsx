@@ -7,7 +7,7 @@ import Header from '../components/Header';
 import PublicationCard from '../components/PublicationCard';
 
 const Dashboard = () => {
-    const { user } = useAuth();
+    useAuth(); // Ensure auth context is available
     const { t } = useTranslation();
     const navigate = useNavigate();
 

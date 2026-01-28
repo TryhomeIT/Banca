@@ -54,8 +54,7 @@ const Reader = () => {
                 setPublication(response.data);
                 setCurrentPage(response.data.current_page || 1);
 
-                // Get PDF URL with auth
-                const token = localStorage.getItem('token');
+                // Set PDF URL (auth token is added in file memo)
                 setPdfUrl(`${api.defaults.baseURL}/publications/${id}/pdf`);
             } catch (error) {
                 console.error('Failed to fetch publication:', error);

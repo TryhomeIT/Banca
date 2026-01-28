@@ -6,7 +6,7 @@ import api from '../services/api';
 import Header from '../components/Header';
 
 const Settings = () => {
-    const { t } = useTranslation();
+    useTranslation(); // i18n context available
     const { user, loading } = useAuth();
     const navigate = useNavigate();
 
@@ -666,7 +666,7 @@ const ContentConfigModal = ({ onClose }) => {
                                                 <h5 style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
                                                     Pending Files ({filteredOthers.length}/{config.others?.length || 0})
                                                 </h5>
-                                                {filteredOthers.map((file, idx) => (
+                                                {filteredOthers.map((file) => (
                                                     <div key={file.filename} style={{
                                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 0',
                                                         borderBottom: '1px solid var(--glass-border)'
@@ -751,7 +751,7 @@ const UserManagementModal = ({ onClose }) => {
         try {
             await api.delete(`/admin/users/${userId}`);
             fetchUsers();
-        } catch (err) {
+        } catch {
             alert('Failed to delete user');
         }
     };
@@ -762,7 +762,7 @@ const UserManagementModal = ({ onClose }) => {
         try {
             await api.put(`/admin/users/${userId}`, { password: newPassword });
             alert('Password reset successfully');
-        } catch (err) {
+        } catch {
             alert('Failed to reset password');
         }
     };
@@ -895,7 +895,7 @@ const TelegramConfigModal = ({ onClose }) => {
     const handleSave = async () => {
         setSaving(true);
         try { await api.post('/admin/settings', { settings }); alert('Saved'); }
-        catch (err) { alert('Failed'); }
+        catch { alert('Failed'); }
         finally { setSaving(false); }
     };
 
@@ -908,7 +908,7 @@ const TelegramConfigModal = ({ onClose }) => {
             });
             setLoginStep('code');
             alert('Code sent!');
-        } catch (err) { alert(err.response?.data?.detail || 'Failed'); }
+        } catch { alert('Request failed'); }
     };
 
     const handleVerifyCode = async (e) => {
@@ -921,7 +921,7 @@ const TelegramConfigModal = ({ onClose }) => {
             });
             setLoginStep('success');
             alert('Logged in!');
-        } catch (err) { alert('Verification failed'); }
+        } catch { alert('Verification failed'); }
     };
 
     return (

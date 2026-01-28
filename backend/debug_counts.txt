@@ -1,4 +1,0 @@
-Total Other in DB: 120
-Matches Jornal: 86
-Matches Revista: 34
-Still Other: 0
