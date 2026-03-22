@@ -10,7 +10,7 @@ Your Jornais application is now fully containerized and ready to run with Docker
 - ✅ `docker-compose.yml` - Complete stack orchestration
 - ✅ `frontend/nginx.conf` - Nginx configuration with API proxy
 - ✅ `.env.docker` - Environment variables template
-- ✅ `docker-start.sh` - Easy startup script
+- ✅ `docker-up.sh` - Easy startup script
 - ✅ `DOCKER_DEPLOYMENT.md` - Complete deployment guide
 
 ### Container Architecture
@@ -44,7 +44,7 @@ nano .env  # Add your GEMINI_API_KEY
 
 ### 2. Start with Script
 ```bash
-./docker-start.sh
+./docker-up.sh
 ```
 
 ### OR Start Manually
@@ -107,7 +107,7 @@ docker-compose ps
 
 1. **Test the setup:**
    ```bash
-   ./docker-start.sh
+   ./docker-up.sh
    ```
 
 2. **Monitor logs:**
@@ -159,7 +159,7 @@ To migrate from your current development setup:
 
 3. Start Docker:
    ```bash
-   ./docker-start.sh
+   ./docker-up.sh
    ```
 
 Your database and all files will be preserved!

@@ -30,6 +30,13 @@ def _patched_sqlite_connect(*args, **kwargs):
 sqlite3.connect = _patched_sqlite_connect
 # ================== End SQLite patch ==================
 
+# Ensure an event loop exists for Pyrogram (Required for Python 3.12+)
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait, RPCError
 from pdf2image import convert_from_path

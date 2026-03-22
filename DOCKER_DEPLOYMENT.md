@@ -19,19 +19,11 @@
    # Update GEMINI_API_KEY with your actual key
    ```
 
-3. **Build the Docker images:**
+3. **Start the application:**
    ```bash
-   ./docker-build.sh
-   ```
-
-4. **Start the application:**
-   ```bash
-   docker-compose up -d
-   ```
-
-   **OR use the all-in-one script:**
-   ```bash
-   ./docker-start.sh
+   ./docker-up.sh
+   # OR force rebuild and start
+   ./docker-up.sh --build
    ```
 
 5. **Access the application:**
@@ -41,30 +33,21 @@
 
 ## Container Architecture
 
-The application consists of 3 containers:
+The application runs in a **single, unified container** for maximum simplicity:
 
-1. **banca-backend** - FastAPI backend (Port 8000)
-2. **banca-telegram-bot** - Telegram bot service
-3. **banca-frontend** - React frontend with Nginx (Port 80)
-
-All containers communicate through the `banca-network` bridge network.
+1. **banca** - The all-in-one container (Port 80)
+   - Serves React Frontend (via Nginx)
+   - Runs FastAPI Backend (internally)
+   - Runs Telegram Bot (background process)
+   - Manages SQLite Database
 
 ## Image Management
 
 ### Building Images
 
-Build both images:
+Build the image:
 ```bash
-./docker-build.sh
-```
-
-Build individually:
-```bash
-# Backend
-docker build -t banca-backend:latest ./backend
-
-# Frontend
-docker build -t banca-frontend:latest ./frontend
+./docker-up.sh --build
 ```
 
 ### Checking Images
@@ -115,7 +98,7 @@ docker-compose restart banca-frontend
 
 ### Rebuild and restart
 ```bash
-./docker-build.sh && docker-compose restart
+./docker-up.sh --build && docker-compose restart
 ```
 
 ### Access container shell
@@ -163,7 +146,7 @@ To update the application:
 
 2. **Rebuild images:**
    ```bash
-   ./docker-build.sh
+   ./docker-up.sh --build
    ```
 
 3. **Restart containers:**
@@ -177,7 +160,7 @@ To update the application:
 ### Images not found
 ```bash
 # Build the images first
-./docker-build.sh
+./docker-up.sh --build
 ```
 
 ### Container won't start
@@ -187,7 +170,7 @@ docker-compose logs banca-backend
 
 # Rebuild from scratch
 docker-compose down
-./docker-build.sh
+./docker-up.sh --build
 docker-compose up -d
 ```
 

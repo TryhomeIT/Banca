@@ -671,9 +671,13 @@ const ContentConfigModal = ({ onClose }) => {
                                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 0',
                                                         borderBottom: '1px solid var(--glass-border)'
                                                     }}>
-                                                        <div style={{ overflow: 'hidden', marginRight: '1rem' }}>
-                                                            <div style={{ fontWeight: '500' }}>{file.extracted_name}</div>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{file.filename}</div>
+                                                        <div style={{ flex: 1, minWidth: '200px', overflow: 'hidden', marginRight: '1rem' }}>
+                                                            <div style={{ fontWeight: '600', color: '#f8fafc', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                                                {file.extracted_name || file.filename}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                                                {file.filename}
+                                                            </div>
                                                         </div>
                                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                             <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} onClick={() => handleRecategorize(file.filename, 'jornais')}>News</button>

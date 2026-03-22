@@ -212,6 +212,7 @@ async def get_publications_configuration(current_user: User = Depends(require_ad
                     modified=str(datetime.fromtimestamp(stat.st_mtime)),
                     extracted_name=extract_publication_name(filename)
                 ))
+    others_files.sort(key=lambda x: x.filename.lower())
     return PublicationsConfig(**config, others=others_files)
 
 @router.post("/publications/add")
@@ -299,7 +300,13 @@ async def recategorize_file(request: RecategorizeRequest, db: Session = Depends(
     file_path = os.path.join(OTHERS_FOLDER, request.filename)
     if os.path.exists(file_path):
         new_cat_name = 'newspaper' if request.target_category == 'jornais' else 'magazine'
-        import_pdf_to_database(file_path, new_cat_name)
+        result = import_pdf_to_database(file_path, new_cat_name)
+        if result:
+            try:
+                os.remove(file_path)
+                logger.info(f"✅ Recategorized and removed from Others: {request.filename}")
+            except Exception as e:
+                logger.error(f"⚠️ Error removing file {file_path}: {e}")
         return {"message": "Recategorized"}
     
     raise HTTPException(status_code=404, detail="File not found")

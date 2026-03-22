@@ -13,16 +13,13 @@ In Portuguese, "banca" means "newsstand" - the traditional street kiosks where p
 ## Quick Start
 
 ```bash
-# 1. Build the image
-./docker-build.sh
+# 1. Start Docker container
+./docker-up.sh
 
-# 2. Start the container
-./docker-start.sh
-
-# 3. Open your browser
+# 2. Open your browser
 http://localhost
 
-# 4. First time setup:
+# 3. First time setup:
 #    - Create an account
 #    - Go to Settings → System & Bot
 #    - Add your Gemini API key
@@ -133,32 +130,33 @@ Banca/
 ├── frontend/           # Frontend source (not mapped)
 ├── Dockerfile          # All-in-one container
 ├── docker-compose.yml  # Simple orchestration
-├── docker-build.sh     # Build script
-└── docker-start.sh     # Start script
+├── docker-up.sh        # Start script (with auto-build)
+├── dev.sh              # Unified local development script
+├── deploy.sh           # Manual deployment script
+└── README.md           # This file
 ```
 
 ## Common Commands
 
 ```bash
-# Build
-./docker-build.sh
-
 # Start
-./docker-start.sh
-# OR
-docker-compose up -d
+./docker-up.sh
+
+# Build & Start
+./docker-up.sh --build
 
 # Stop
+./docker-up.sh --stop
+# OR
 docker-compose down
 
 # View logs
+./docker-up.sh --logs
+# OR
 docker-compose logs -f
 
-# Restart
-docker-compose restart
-
-# Rebuild and restart
-./docker-build.sh && docker-compose restart
+# Local Development (without Docker)
+./dev.sh
 
 # Access container
 docker exec -it banca bash
@@ -242,8 +240,7 @@ rm -rf data/
 ```bash
 docker-compose down
 docker rmi banca:latest
-./docker-build.sh
-docker-compose up -d
+./docker-up.sh --build
 ```
 
 ## License

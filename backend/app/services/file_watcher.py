@@ -160,7 +160,7 @@ def extract_publication_name(filename: str) -> str:
     # Normalize to NFC
     name = unicodedata.normalize('NFC', name)
     
-    return name.strip()
+    return name.strip() or filename
 
 def import_pdf_to_database(file_path: str, category: str) -> Optional[Publication]:
     """Import a single PDF file into the database."""
