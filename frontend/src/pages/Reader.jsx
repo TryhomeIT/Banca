@@ -166,6 +166,22 @@ const Reader = () => {
     const zoomOut = () => setScale(prev => Math.max(prev - 0.25, 0.5));
     const resetZoom = () => setScale(1);
 
+    const toggleFavorite = async () => {
+        if (!publication) return;
+        const isFavorite = publication.is_favorite;
+        try {
+            if (isFavorite) {
+                await api.delete(`/publications/favorites/${encodeURIComponent(publication.title)}`);
+            } else {
+                await api.post(`/publications/favorites/${encodeURIComponent(publication.title)}`);
+            }
+            // Update local state
+            setPublication(prev => ({ ...prev, is_favorite: !isFavorite }));
+        } catch (error) {
+            console.error('Failed to toggle favorite:', error);
+        }
+    };
+
     const onDocumentLoadSuccess = ({ numPages }) => {
         setNumPages(numPages);
         setLoading(false);
@@ -208,7 +224,7 @@ const Reader = () => {
             {/* Header */}
             <header className={`reader-header ${!showControls ? 'hidden' : ''}`}>
                 <div className="reader-header-left">
-                    <button className="reader-back-btn" onClick={() => navigate('/')}>
+                    <button className="reader-back-btn desktop-only" onClick={() => navigate('/')}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M19 12H5M12 19l-7-7 7-7" />
                         </svg>
@@ -217,35 +233,16 @@ const Reader = () => {
                     <h1 className="reader-title">{publication.title}</h1>
                 </div>
 
-                <div className="reader-controls desktop-only">
-                    <div className="reader-zoom-controls">
-                        <button className="reader-zoom-btn" onClick={zoomOut} title="Zoom Out">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M5 12h14" />
-                            </svg>
-                        </button>
-                        <button className="reader-zoom-btn" onClick={resetZoom} title="Reset Zoom">
-                            {Math.round(scale * 100)}%
-                        </button>
-                        <button className="reader-zoom-btn" onClick={zoomIn} title="Zoom In">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 5v14M5 12h14" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <div className="reader-page-info">
-                        <input
-                            type="number"
-                            className="reader-page-input"
-                            value={currentPage}
-                            onChange={handlePageInputChange}
-                            min="1"
-                            max={numPages}
-                        />
-                        <span>/ {numPages}</span>
-                    </div>
+                <div className="reader-header-right">
+                    <button
+                        className={`reader-favorite-btn ${publication?.is_favorite ? 'is-favorite' : ''}`}
+                        onClick={toggleFavorite}
+                        title={publication?.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                        {publication?.is_favorite ? '⭐' : '☆'}
+                    </button>
                 </div>
+
             </header>
             {/* Main Reading Area */}
             <main className="reader-main" ref={containerRef}>

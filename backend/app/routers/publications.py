@@ -75,45 +75,49 @@ async def get_publications(
     if search:
         query = query.filter(Publication.title.ilike(f"%{search}%"))
     
-    # Get user's favorite titles for sorting
+    # Get the latest publication date for EACH title in the database
+    # This ensures we know if a pub is the "latest" version of that magazine/newspaper
+    latest_dates_query = db.query(
+        Publication.title, 
+        func.max(Publication.publication_date).label("max_date")
+    ).group_by(Publication.title).all()
+    latest_dates = {row.title: row.max_date for row in latest_dates_query}
+
+    # Get user's favorite titles
     user_favorites = db.query(UserFavorite.publication_title).filter(
         UserFavorite.user_id == current_user.id
     ).all()
     favorite_titles = {f[0] for f in user_favorites}
     
-    # Get all publications sorted by date (we'll re-sort in Python for favorites logic)
+    # Get all publications matching filters
     publications = query.order_by(
-        desc(Publication.publication_date.is_(None)),
-        desc(Publication.publication_date),
-        desc(Publication.created_at)
-    ).offset(skip).limit(limit).all()
+        desc(Publication.publication_date)
+    ).all()
     
-    # Get today's date for comparison
-    today = date.today()
-    
-    # Sort: By date (newest first), then favorites first within each day
+    # Sort: 
+    # 1. Latest issue of a Favorite title -> Top
+    # 2. Everything else -> By Date
     def sort_key(pub):
-        # Use publication_date for sorting, fallback to created_at
-        pub_date = pub.publication_date.date() if pub.publication_date else None
         is_favorite = pub.title in favorite_titles
+        is_latest = pub.publication_date == latest_dates.get(pub.title)
         
-        # Primary sort: by date (newest first, represented as negative timestamp)
-        # Secondary sort: favorites first within each day (False < True, so negate)
+        # Priority 0: Favorite + Latest
+        # Priority 1: Everything else
+        priority = 0 if (is_favorite and is_latest) else 1
+        
+        # Sort by: Priority (0 first), then Date (newest first)
         date_sort = -(pub.publication_date.timestamp() if pub.publication_date else 0)
         
-        # Within the same day, favorites come first (0 for favorite, 1 for non-favorite)
-        favorite_sort = 0 if is_favorite else 1
-        
-        # Combine: First by day (from date), then by favorite status, then by exact time
-        day_sort = -pub.publication_date.toordinal() if pub.publication_date else 0
-        
-        return (day_sort, favorite_sort, date_sort)
+        return (priority, date_sort)
     
     publications_sorted = sorted(publications, key=sort_key)
     
+    # Apply pagination manually after sorting
+    paginated_pubs = publications_sorted[skip : skip + limit]
+    
     # Get reading progress for each publication
     result = []
-    for pub in publications_sorted:
+    for pub in paginated_pubs:
         progress = db.query(ReadingProgress).filter(
             ReadingProgress.user_id == current_user.id,
             ReadingProgress.publication_id == pub.id
@@ -139,12 +143,19 @@ async def get_recent_publications(
         ReadingProgress.user_id == current_user.id
     ).order_by(desc(ReadingProgress.last_read_at)).limit(limit).all()
     
+    # Get user's favorite titles
+    user_favorites = db.query(UserFavorite.publication_title).filter(
+        UserFavorite.user_id == current_user.id
+    ).all()
+    favorite_titles = {f[0] for f in user_favorites}
+    
     result = []
     for progress in progress_list:
         pub = progress.publication
         pub_dict = PublicationResponse.model_validate(pub).model_dump()
         pub_dict["current_page"] = progress.current_page
         pub_dict["last_read_at"] = progress.last_read_at
+        pub_dict["is_favorite"] = pub.title in favorite_titles
         result.append(PublicationWithProgress(**pub_dict))
     
     return result

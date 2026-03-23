@@ -470,11 +470,22 @@ a:hover {
 
 .publication-cover {
   position: relative;
-  aspect-ratio: 3/4;
+  aspect-ratio: 1 / 1.4;
+  background: var(--color-bg-tertiary);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background: var(--color-bg-tertiary);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  border: 2px solid transparent;
+}
+
+.publication-card.is-favorite .publication-cover {
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+}
+
+.publication-card.is-favorite .publication-title {
+  color: #fbbf24;
 }
 
 .publication-cover img {
@@ -486,6 +497,24 @@ a:hover {
 
 .publication-card:hover .publication-cover img {
   transform: scale(1.05);
+}
+
+.publication-favorite-badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  font-size: 1.25rem;
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .publication-favorite-badge {
+    top: 0.25rem;
+    left: 0.25rem;
+    font-size: 0.9rem;
+  }
 }
 
 .publication-info {
@@ -684,6 +713,34 @@ a:hover {
   background: var(--color-bg-hover);
 }
 
+.reader-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.reader-favorite-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+.reader-favorite-btn.is-favorite {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.4));
+}
+
+.reader-favorite-btn:hover {
+  transform: scale(1.2);
+}
+
 .reader-title {
   font-size: 1rem;
   font-weight: 600;
@@ -691,6 +748,13 @@ a:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 300px;
+}
+
+@media (max-width: 768px) {
+  .reader-title {
+    max-width: 200px;
+    font-size: 0.9rem;
+  }
 }
 
 /* FIX: Align reader controls in a single row */

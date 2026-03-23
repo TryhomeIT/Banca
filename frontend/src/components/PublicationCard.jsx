@@ -67,7 +67,7 @@ const PublicationCard = ({ publication, onClick, showProgress = false, onRemove 
     };
 
     return (
-        <div className="publication-card" onClick={onClick}>
+        <div className={`publication-card ${publication.is_favorite ? 'is-favorite' : ''}`} onClick={onClick}>
             <div className="publication-cover">
                 {!imageError && imageSrc ? (
                     <img
@@ -96,6 +96,12 @@ const PublicationCard = ({ publication, onClick, showProgress = false, onRemove 
                         </svg>
                     </div>
                 </div>
+
+                {publication.is_favorite && (
+                    <div className="publication-favorite-badge" title="Favorite">
+                        ⭐
+                    </div>
+                )}
 
                 {onRemove && (
                     <button
