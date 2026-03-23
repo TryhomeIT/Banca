@@ -329,14 +329,14 @@ a:hover {
 }
 
 .section {
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 /* Category Tabs - FORCED ROW */
@@ -379,6 +379,75 @@ a:hover {
   color: white;
   border-color: transparent;
   box-shadow: var(--shadow-md);
+}
+
+/* Compact label above horizontal scroll */
+.scroll-section-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
+/* Horizontal Scroll Wrapper with right-fade hint */
+.horizontal-scroll-wrapper {
+  position: relative;
+}
+
+.horizontal-scroll-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 50px;
+  background: linear-gradient(to right, transparent, #0a0a0f);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Horizontal Scroll List (Continue Reading) */
+.horizontal-scroll-list {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.horizontal-scroll-list::-webkit-scrollbar {
+  display: none;
+}
+
+.horizontal-scroll-item {
+  flex: 0 0 auto;
+  width: 120px;
+  scroll-snap-align: start;
+}
+
+/* Inside the continue reading row: hide text labels, keep only progress bar */
+.horizontal-scroll-item .publication-title,
+.horizontal-scroll-item .publication-meta {
+  display: none;
+}
+
+.horizontal-scroll-item .publication-info {
+  padding-top: 0.2rem;
+}
+
+.horizontal-scroll-item .publication-progress {
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 768px) {
+  .horizontal-scroll-item {
+    width: 95px;
+  }
 }
 
 /* Grid & Cards */
@@ -731,12 +800,42 @@ a:hover {
 /* Mobile Optimizations */
 @media (max-width: 768px) {
   .header-content {
-    height: 60px;
+    height: 54px;
     padding: 0 0.5rem;
+    gap: 0.5rem;
+  }
+
+  /* Search bar always visible on mobile, expands to fill space */
+  .header-search {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Compact the header nav so search has room */
+  .header-nav {
+    flex: 1;
+    gap: 0.5rem;
   }
 
   .container {
     padding: 0 0.5rem;
+  }
+
+  .dashboard {
+    padding-top: 0.5rem;
+  }
+
+  .section {
+    margin-bottom: 0;
+  }
+
+  .section-header {
+    margin-bottom: 0.5rem;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
   }
 
   .publication-grid {
@@ -745,7 +844,7 @@ a:hover {
   }
 
   .publication-info {
-    padding-top: 0.4rem;
+    padding-top: 0.3rem;
   }
 
   .publication-title {
@@ -760,6 +859,18 @@ a:hover {
 
   .card {
     padding: 0.75rem !important;
+  }
+
+  /* Categories fill full width on mobile - compact */
+  .category-tabs {
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .category-tab {
+    min-width: 0;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.82rem;
   }
 }
 

@@ -73,7 +73,6 @@ const Dashboard = () => {
     const categories = [
         { id: 'newspaper', label: t('dashboard.newspapers') },
         { id: 'magazine', label: t('dashboard.magazines') },
-        { id: 'others', label: t('dashboard.others') },
     ];
 
     if (loading && publications.length === 0) {
@@ -103,19 +102,20 @@ const Dashboard = () => {
                         <>
                             {recentlyRead.length > 0 && (
                                 <section className="section">
-                                    <div className="section-header">
-                                        <h2 className="section-title">📖 {t('dashboard.continueReading')}</h2>
-                                    </div>
-                                    <div className="publication-grid">
-                                        {recentlyRead.map(pub => (
-                                            <PublicationCard
-                                                key={pub.id}
-                                                publication={pub}
-                                                onClick={() => handleOpenReader(pub.id)}
-                                                showProgress
-                                                onRemove={handleRemoveProgress}
-                                            />
-                                        ))}
+                                    <p className="scroll-section-label">📖 {t('dashboard.continueReading')}</p>
+                                    <div className="horizontal-scroll-wrapper">
+                                        <div className="horizontal-scroll-list">
+                                            {recentlyRead.map(pub => (
+                                                <div key={pub.id} className="horizontal-scroll-item">
+                                                    <PublicationCard
+                                                        publication={pub}
+                                                        onClick={() => handleOpenReader(pub.id)}
+                                                        showProgress
+                                                        onRemove={handleRemoveProgress}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </section>
                             )}
