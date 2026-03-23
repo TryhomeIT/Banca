@@ -21,7 +21,6 @@ from ..services import (
     generate_thumbnail,
     save_uploaded_file,
     delete_publication_files,
-    convex_service
 )
 from ..config import settings
 
@@ -231,22 +230,7 @@ async def upload_publication(
     db.commit()
     db.refresh(publication)
     
-    # Sync to Convex
-    try:
-        convex_service.sync_publication({
-            "title": publication.title,
-            "filename": publication.filename,
-            "original_filename": publication.original_filename,
-            "thumbnail_path": publication.thumbnail_path,
-            "file_path": publication.file_path,
-            "page_count": publication.page_count,
-            "file_size": publication.file_size,
-            "category": publication.category,
-            "publication_date": publication.publication_date.isoformat() if publication.publication_date else None,
-            "external_id": publication.id
-        })
-    except Exception:
-        pass # Don't fail the upload if Convex sync fails
+
 
     return publication
 

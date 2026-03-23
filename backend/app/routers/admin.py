@@ -27,7 +27,6 @@ from ..services import (
 )
 from ..config import settings
 from ..services.settings import settings_service
-from ..services.convex_service import convex_service
 from ..services.pdf_service import generate_thumbnail
 from ..database import SessionLocal, get_db
 from ..schemas.schemas import UserResponse
@@ -261,13 +260,6 @@ async def move_publication_category(request: MoveItemRequest, db: Session = Depe
                     os.makedirs(target_dir, exist_ok=True)
                     shutil.move(pub.file_path, new_path)
                     pub.file_path = new_path
-            convex_service.sync_publication({
-                "title": pub.title, "filename": pub.filename, "original_filename": pub.original_filename,
-                "thumbnail_path": pub.thumbnail_path, "file_path": pub.file_path, "page_count": pub.page_count,
-                "file_size": pub.file_size, "category": pub.category, 
-                "publication_date": pub.publication_date.isoformat() if pub.publication_date else None,
-                "external_id": pub.id
-            })
         db.commit()
     return {"message": "Success"}
 
@@ -437,16 +429,10 @@ async def cleanup_telegram_files(current_user: User = Depends(require_admin)):
                     elif item.is_dir(): shutil.rmtree(item)
         logger.info("✅ Cleared uploads and thumbnails")
         
-        # 6. Clear file watcher in-memory cache and Convex cloud data
+        # 6. Clear file watcher in-memory cache
         logger.info("♻️ Clearing file watcher cache...")
         from ..services.file_watcher import scan_all_folders
         scan_all_folders(force=True)
-        
-        try:
-            convex_service.clear_all()
-            logger.info("✅ Cleared Convex cloud data")
-        except Exception as e:
-            logger.warning(f"Convex clear skipped: {e}")
         
         # 7. Start bot & Trigger 7-day scan
         await start_telegram_bot()
@@ -463,30 +449,6 @@ async def cleanup_telegram_files(current_user: User = Depends(require_admin)):
         complete_task('cleanup')
         
     return {"message": "Cleanup complete. All records and files removed. 7-day re-scan started."}
-
-@router.post("/telegram/sync-convex")
-async def sync_convex_manual(wipe: bool = Query(False), db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
-    start_task('sync_convex')
-    try:
-        if wipe: convex_service.clear_all()
-        pubs = db.query(Publication).all()
-        for pub in pubs:
-            if not pub.thumbnail_path or not os.path.exists(pub.thumbnail_path):
-                if pub.file_path and os.path.exists(pub.file_path):
-                    thumb, pages = generate_thumbnail(pub.file_path, pub.filename.rsplit('.', 1)[0])
-                    if thumb: 
-                        pub.thumbnail_path = thumb
-                        if pages > 0: pub.page_count = pages
-                        db.commit()
-            convex_service.sync_publication({
-                "title": pub.title, "filename": pub.filename, "original_filename": pub.original_filename,
-                "thumbnail_path": pub.thumbnail_path, "file_path": pub.file_path, "page_count": pub.page_count,
-                "file_size": pub.file_size, "category": pub.category,
-                "publication_date": pub.publication_date.isoformat() if pub.publication_date else None,
-                "external_id": pub.id
-            })
-    finally: complete_task('sync_convex')
-    return {"message": "Success"}
 
 @router.post("/scan/corrupt")
 async def scan_and_remove_corrupt_files(background_tasks: BackgroundTasks, current_user: User = Depends(require_admin)):
@@ -603,7 +565,6 @@ async def update_system_settings(request: SystemSettingsRequest, current_user: U
 async def reset_system(days: int = 7, delete_downloads: bool = False, current_user: User = Depends(require_admin)):
     try:
         if is_bot_running(): await stop_telegram_bot()
-        convex_service.clear_all()
         db = SessionLocal()
         try:
             db.query(ReadingProgress).delete()

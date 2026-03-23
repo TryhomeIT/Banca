@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "axios": "^1.13.2",
-    "convex": "^1.31.4",
     "i18next": "^25.7.4",
     "i18next-browser-languagedetector": "^8.2.0",
     "pdfjs-dist": "^4.0.379",

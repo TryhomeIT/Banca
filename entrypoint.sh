@@ -5,9 +5,7 @@ echo "🚀 Starting Banca..."
 
 # 1. Generate runtime config for Frontend
 echo "⚙️  Generating frontend config..."
-echo "window.ENV = { CONVEX_URL: \"${CONVEX_URL}\" };" > /usr/share/nginx/html/config.js
-echo "📝 Generated config.js content:"
-cat /usr/share/nginx/html/config.js
+echo "window.ENV = { };" > /usr/share/nginx/html/config.js
 
 # 2. Initialize database
 echo "🗄️  Initializing database..."
@@ -19,15 +17,14 @@ if [ ! -f /app/storage/publications.json ]; then
     echo "{\"jornais\":[],\"revistas\":[],\"keywords\":[],\"topics\":[]}" > /app/storage/publications.json
 fi
 
-# DEBUG: Check paths
-echo "🕵️ Running Encoding Diagnostics..."
-python diagnose_encoding.py
 
 # 4. Start Nginx (Frontend)
+echo "🌐 Checking Nginx configuration..."
+nginx -t
 echo "🌐 Starting Nginx..."
-nginx
+nginx -g "daemon on;"
 
 # 5. Start FastAPI server (Backend)
 echo "🔧 Starting FastAPI server..."
-# We bind to 127.0.0.1 because Nginx proxies to it
+# We use exec so uvicorn becomes PID 1 and receives signals
 exec uvicorn app.main:app --host 127.0.0.1 --port 8000

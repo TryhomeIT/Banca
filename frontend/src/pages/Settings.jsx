@@ -45,7 +45,6 @@ const SystemControl = () => {
     // Modal States
     const [showTelegramModal, setShowTelegramModal] = useState(false);
     const [showAIModal, setShowAIModal] = useState(false);
-    const [showConvexModal, setShowConvexModal] = useState(false);
     const [showUserModal, setShowUserModal] = useState(false);
     const [showContentModal, setShowContentModal] = useState(false);
 
@@ -80,7 +79,6 @@ const SystemControl = () => {
     if (loading) return <div className="loading-spinner"></div>;
 
     const isGeminiActive = !!aiSettings.GEMINI_API_KEY;
-    const isConvexEnabled = generalSettings.USE_CONVEX === 'true';
     const userCount = status?.database?.total_users || 0;
     const fileCount = status?.database?.total_publications || 0;
 
@@ -171,41 +169,6 @@ const SystemControl = () => {
                     </button>
                 </div>
 
-                {/* 3. Convex Cloud Status Card */}
-                <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{
-                                width: '40px', height: '40px', borderRadius: '10px',
-                                background: 'rgba(249, 115, 22, 0.15)', color: '#fb923c',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
-                            }}>
-                                ☁️
-                            </div>
-                            <div>
-                                <h4 style={{ fontSize: '1rem', marginBottom: '0.1rem' }}>Convex Cloud</h4>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                    {isConvexEnabled ? 'Syncing to cloud' : 'Local only mode'}
-                                </span>
-                            </div>
-                        </div>
-                        <div style={{
-                            padding: '0.25rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600',
-                            background: isConvexEnabled ? 'rgba(74, 222, 128, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-                            color: isConvexEnabled ? '#4ade80' : '#94a3b8'
-                        }}>
-                            {isConvexEnabled ? 'Enabled' : 'Disabled'}
-                        </div>
-                    </div>
-
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => setShowConvexModal(true)}
-                        style={{ marginTop: 'auto', width: '100%' }}
-                    >
-                        Configure Cloud
-                    </button>
-                </div>
 
                 {/* 4. Files Status Card */}
                 <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -281,7 +244,6 @@ const SystemControl = () => {
             {/* Modals */}
             {showTelegramModal && <TelegramConfigModal onClose={() => setShowTelegramModal(false)} />}
             {showAIModal && <AIConfigModal onClose={() => { setShowAIModal(false); fetchData(); }} />}
-            {showConvexModal && <ConvexConfigModal onClose={() => { setShowConvexModal(false); fetchData(); }} />}
             {showUserModal && <UserManagementModal onClose={() => { setShowUserModal(false); fetchData(); }} />}
             {showContentModal && <ContentConfigModal onClose={() => { setShowContentModal(false); fetchData(); }} />}
         </div>
@@ -375,10 +337,6 @@ const ContentConfigModal = ({ onClose }) => {
         catch { setIsSyncing(false); }
     };
 
-    const handleSyncConvex = async () => {
-        if (!confirm('Force sync all files to Convex?')) return;
-        try { await api.post('/admin/telegram/sync-convex'); alert('Sync started'); } catch { alert('Failed'); }
-    };
 
     const handleReorganize = async () => {
         if (!confirm('Reorganize all files based on current rules?')) return;
@@ -553,7 +511,6 @@ const ContentConfigModal = ({ onClose }) => {
                                             {isSyncing ? '⏳ Syncing...' : '🔄 Sync Last 30 Days'}
                                         </button>
                                         <button className="btn btn-secondary" onClick={handleScanOthers} disabled={isSyncing}>🧠 Process "Others" Folder</button>
-                                        <button className="btn btn-secondary" onClick={handleSyncConvex}>☁️ Force Convex Sync</button>
                                         <button className="btn btn-secondary" onClick={handleReorganize}>📂 Reorganize Files</button>
                                         <button className="btn btn-secondary" style={{ color: 'var(--color-error)' }} onClick={handleCleanup} disabled={isSyncing}>
                                             {isSyncing ? '⏳ Cleaning...' : '🧹 Cleanup Files'}
@@ -1037,56 +994,6 @@ const AIConfigModal = ({ onClose }) => {
                         </div>
                         <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
                             <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent-primary)' }}>Get API Key</a>
-                        </p>
-                    </div>
-                </div>
-                <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const ConvexConfigModal = ({ onClose }) => {
-    const [settings, setSettings] = useState({});
-    const [saving, setSaving] = useState(false);
-
-    useEffect(() => {
-        api.get('/admin/settings?category=general').then(res => setSettings(res.data || {})).catch(console.error);
-    }, []);
-
-    const handleSave = async () => {
-        setSaving(true);
-        try { await api.post('/admin/settings', { settings }); alert('Saved'); onClose(); }
-        catch { alert('Failed'); }
-        finally { setSaving(false); }
-    };
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal">
-                <div className="modal-header">
-                    <h4 className="modal-title">Convex Cloud Configuration</h4>
-                    <button className="modal-close" onClick={onClose}>✕</button>
-                </div>
-                <div className="modal-body">
-                    <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                        Enable cloud synchronization to backup your library and access it remotely.
-                    </p>
-                    <div className="input-group">
-                        <label>Cloud Sync Status</label>
-                        <select
-                            className="input"
-                            value={settings.USE_CONVEX || 'false'}
-                            onChange={e => setSettings({ ...settings, USE_CONVEX: e.target.value })}
-                        >
-                            <option value="true">Enabled (Cloud & Local)</option>
-                            <option value="false">Disabled (Local Only)</option>
-                        </select>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem' }}>
-                            When disabled, the application runs entirely on your local machine.
                         </p>
                     </div>
                 </div>

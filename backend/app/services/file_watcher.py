@@ -22,7 +22,6 @@ from ..config import settings
 from ..database import SessionLocal
 from ..models import Publication
 from .pdf_service import generate_thumbnail
-from .convex_service import convex_service
 
 logger = logging.getLogger(__name__)
 
@@ -214,23 +213,6 @@ def import_pdf_to_database(file_path: str, category: str) -> Optional[Publicatio
                 db.commit()
                 db.refresh(existing)
             
-            # Sync to Convex (always sync to ensure metadata like title/category is correct)
-            try:
-                convex_service.sync_publication({
-                    "title": existing.title,
-                    "filename": existing.filename,
-                    "original_filename": existing.original_filename,
-                    "thumbnail_path": existing.thumbnail_path,
-                    "file_path": existing.file_path,
-                    "page_count": existing.page_count,
-                    "file_size": existing.file_size,
-                    "category": existing.category,
-                    "publication_date": existing.publication_date.isoformat() if existing.publication_date else None,
-                    "external_id": existing.id
-                })
-            except Exception as e:
-                logger.error(f"⚠️ Convex sync failed for existing file: {e}")
-
             return existing
         
         # Extract publication info
@@ -270,23 +252,6 @@ def import_pdf_to_database(file_path: str, category: str) -> Optional[Publicatio
         db.commit()
         db.refresh(publication)
         
-        # Sync to Convex
-        try:
-            convex_service.sync_publication({
-                "title": publication.title,
-                "filename": publication.filename,
-                "original_filename": publication.original_filename,
-                "thumbnail_path": publication.thumbnail_path,
-                "file_path": publication.file_path,
-                "page_count": publication.page_count,
-                "file_size": publication.file_size,
-                "category": publication.category,
-                "publication_date": publication.publication_date.isoformat() if publication.publication_date else None,
-                "external_id": publication.id
-            })
-        except Exception as e:
-            logger.error(f"⚠️ Convex sync failed: {e}")
-
         logger.info(f"✅ Imported: {title} ({category}) - {page_count} pages")
         return publication
         

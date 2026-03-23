@@ -14,27 +14,15 @@ ARCHIVE_NAME="banca-image.tar"
 echo "🔨 Building Banca Docker Image..."
 echo ""
 
-# 0. Deploy Convex Functions
-echo "☁️  Deploying Convex Schema & Functions..."
-cd frontend
-npx convex deploy --yes
-if [ $? -ne 0 ]; then
-    echo "❌ Convex deployment failed! Check your login status."
-    exit 1
-fi
-cd ..
-echo "✅ Convex deployed successfully"
-echo ""
-
 # Check if sshpass is installed
 if ! command -v sshpass &> /dev/null; then
     echo "⚠️  sshpass not found. Installing..."
     sudo apt-get update && sudo apt-get install -y sshpass
 fi
 
-# Build the image
-echo "📦 Building ${IMAGE_NAME}..."
-docker build -t ${IMAGE_NAME} .
+# Build the image forced for the server's architecture (linux/amd64)
+echo "📦 Building ${IMAGE_NAME} for linux/amd64..."
+docker build --platform linux/amd64 -t ${IMAGE_NAME} .
 
 if [ $? -ne 0 ]; then
     echo "❌ Build failed!"
@@ -114,7 +102,8 @@ echo "📋 Image is loaded on server but NOT applied"
 echo ""
 echo "To apply on server:"
 echo "  ssh ${SERVER_USER}@${SERVER}"
-echo "  cd /path/to/banca"
+echo "  mkdir -p ~/banca && mv /tmp/docker-compose.yml ~/banca/"
+echo "  cd ~/banca"
 echo "  docker-compose down"
 echo "  docker-compose up -d"
 echo ""

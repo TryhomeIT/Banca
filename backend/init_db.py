@@ -68,7 +68,6 @@ def init_database():
                 ("TELEGRAM_API_HASH", "", "Telegram API Hash", "telegram"),
                 ("TELEGRAM_PHONE", "", "Telegram Phone Number", "telegram"),
                 ("TELEGRAM_CHANNEL_ID", "", "Source Channel ID (Numeric or @username)", "telegram"),
-                ("USE_CONVEX", "false", "Enable Cloud Sync (Convex)", "general"),
                 ("GEMINI_API_KEY", "", "Gemini AI API Key", "ai"),
                 ("DOWNLOADS_RETENTION_DAYS_JORNAIS", "7", "Days to keep newspaper files", "general"),
                 ("DOWNLOADS_RETENTION_DAYS_REVISTAS", "90", "Days to keep magazine files", "general"),

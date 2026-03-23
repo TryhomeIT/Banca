@@ -5,7 +5,8 @@ WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy backend requirements and install
@@ -40,7 +41,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean \
+    && rm -rf /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*
 
 # Copy Python packages from backend builder
 COPY --from=backend-builder /root/.local /root/.local
@@ -54,7 +56,7 @@ COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY frontend/nginx.conf /etc/nginx/sites-available/default
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx.conf /etc/nginx/sites-enabled/default
 
 # Create necessary directories
 RUN mkdir -p /app/storage/data /app/storage/uploads /app/storage/thumbnails /app/storage/logs \

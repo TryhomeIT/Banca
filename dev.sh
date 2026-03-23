@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Banca - Unified Local Development Script
-# Starts Backend (FastAPI), Frontend (Vite), and Database (Convex)
+# Starts Backend (FastAPI) and Frontend (Vite)
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 LOG_DIR="$SCRIPT_DIR/logs/local_dev"
@@ -51,13 +51,6 @@ check_dependencies() {
         fi
     fi
     
-    # 3. Convex check
-    # Check if user is logged into convex or if convex.json exists
-    if [ ! -f "$SCRIPT_DIR/frontend/convex.json" ] && [ ! -d "$SCRIPT_DIR/frontend/convex" ]; then
-        echo -e "${YELLOW}⚠️  Convex project not initialized. You might need to login.${NC}"
-        echo -e "   Please run 'npx convex dev' manually first to set up your project."
-        # We don't exit here, just warn.
-    fi
 
     # 4. Check for pdftoppm (Poppler)
     if ! command -v pdftoppm &> /dev/null; then
@@ -85,7 +78,6 @@ stop_services() {
     # 2. Safety kill via pkill for matching processes
     pkill -f "uvicorn app.main:app" 2>/dev/null
     pkill -f "vite" 2>/dev/null
-    pkill -f "convex dev" 2>/dev/null
     
     echo -e "${GREEN}✅ All services stopped.${NC}"
 }
@@ -112,17 +104,9 @@ start_foreground() {
     fi
     BACKEND_PID=$!
 
-    # 2. Start Convex
-    echo -e "${BLUE}   Starting Convex...${NC}"
-    cd "$SCRIPT_DIR/frontend"
-    # npx convex dev can be interactive if not logged in.
-    # We run it first to allow it to prompt if necessary, then we continue.
-    # Actually, we'll try to run it in the background but it might fail on login.
-    npx convex dev &
-    CONVEX_PID=$!
-
-    # 3. Start Frontend
+    # 2. Start Frontend
     echo -e "${BLUE}   Starting Frontend (Vite)...${NC}"
+    cd "$SCRIPT_DIR/frontend"
     npm run dev &
     FRONTEND_PID=$!
 
@@ -158,19 +142,14 @@ start_background() {
     fi
     BACKEND_PID=$!
 
-    # 2. Convex
-    echo -e "${BLUE}   Starting Convex...${NC}"
-    cd "$SCRIPT_DIR/frontend"
-    nohup npx convex dev > "$LOG_DIR/convex.log" 2>&1 &
-    CONVEX_PID=$!
-
     # 3. Frontend
     echo -e "${BLUE}   Starting Frontend...${NC}"
+    cd "$SCRIPT_DIR/frontend"
     nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
     FRONTEND_PID=$!
 
     # Save PIDs
-    echo "$BACKEND_PID $CONVEX_PID $FRONTEND_PID" > "$PID_FILE"
+    echo "$BACKEND_PID $FRONTEND_PID" > "$PID_FILE"
 
     echo -e "${GREEN}✅ Services started in background.${NC}"
     echo -e "   Logs: $LOG_DIR/"
@@ -194,10 +173,9 @@ case "$1" in
         # Reusing stop_services logic to check if PIDs exist or processes run
         pgrep -f "uvicorn app.main:app" > /dev/null && echo "Backend is RUNNING" || echo "Backend is STOPPED"
         pgrep -f "vite" > /dev/null && echo "Frontend is RUNNING" || echo "Frontend is STOPPED"
-        pgrep -f "convex dev" > /dev/null && echo "Convex is RUNNING" || echo "Convex is STOPPED"
         ;;
     --logs)
-        tail -f "$LOG_DIR/backend.log" "$LOG_DIR/frontend.log" "$LOG_DIR/convex.log"
+        tail -f "$LOG_DIR/backend.log" "$LOG_DIR/frontend.log"
         ;;
     --help|-h)
         show_help

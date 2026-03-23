@@ -12,8 +12,7 @@ services:
       # Application Configuration
       - DATA_DIR=/app/storage
       # Pass these to the backend at runtime
-      - CONVEX_URL=${CONVEX_URL}
-      - CONVEX_DEPLOY_KEY=${CONVEX_DEPLOY_KEY}
+      - DATA_DIR=/app/storage
       # Optional: Set a specific secret key for the app
       - SECRET_KEY=${SECRET_KEY:-changeme_in_production}
     volumes:
