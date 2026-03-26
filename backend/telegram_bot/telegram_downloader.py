@@ -69,6 +69,7 @@ PROCESSED_FILES_LOG = os.path.join(DATA_DIR, 'processed_files.json')
 SCAN_REQUEST_FILE = os.path.join(DATA_DIR, 'scan_request.json')
 ACTIVITY_LOG_FILE = os.path.join(DATA_DIR, 'activity_log.json')
 PID_LOCK_FILE = os.path.join(DATA_DIR, 'telegram_bot.pid')
+LAST_AUTO_SCAN_FILE = os.path.join(DATA_DIR, 'last_auto_scan.json')
 
 # Global instances
 app = None
@@ -365,6 +366,58 @@ async def check_scan_requests():
         elif req.get('type') == 'others': await scan_existing_others_files(app)
     except Exception as e: logger.error(f"Scan Error: {e}")
 
+async def auto_history_scan(days: int = 2, force: bool = False):
+    """
+    Automatically scan history for the last X days if it hasn't been done recently.
+    Target interval: 6 hours.
+    """
+    if not app or not app.is_connected:
+        return
+
+    # Check last scan time
+    now = datetime.now()
+    if not force and os.path.exists(LAST_AUTO_SCAN_FILE):
+        try:
+            with open(LAST_AUTO_SCAN_FILE, 'r') as f:
+                data = json.load(f)
+                last_scan = datetime.fromisoformat(data.get('timestamp'))
+                if (now - last_scan).total_seconds() < 30 * 60:
+                    logger.info("⏭️ Auto-scan skipped (recently performed)")
+                    return
+        except: pass
+
+    target_id = await resolve_source_chat()
+    if not target_id:
+        logger.warning("⚠️ Auto-scan skipped: Could not resolve source chat")
+        return
+
+    logger.info(f"🚀 AUTO-SCAN: Starting history catch-up ({days} days)...")
+    config = load_publications_config()
+    cutoff = now - timedelta(days=days)
+    
+    stats = {"checked": 0, "saved": 0, "keyword": 0, "review": 0, "skipped": 0, "error": 0}
+    
+    try:
+        async for msg in app.get_chat_history(target_id, limit=1000):
+            if msg.date < cutoff: break
+            status = await process_message(msg, app, config=config)
+            stats["checked"] += 1
+            
+            if status == "saved_cat": stats["saved"] += 1
+            elif status == "saved_keyword": stats["keyword"] += 1
+            elif status == "sent_to_review": stats["review"] += 1
+            elif status == "skipped": stats["skipped"] += 1
+            elif status == "error": stats["error"] += 1
+            
+        logger.info(f"✅ AUTO-SCAN complete. Checked {stats['checked']} messages.")
+        
+        # Save last scan time
+        with open(LAST_AUTO_SCAN_FILE, 'w') as f:
+            json.dump({'timestamp': now.isoformat()}, f)
+            
+    except Exception as e:
+        logger.error(f"❌ AUTO-SCAN Error: {e}")
+
 async def main():
     logger.info("🚀 Bot Connecting...")
     try:
@@ -386,6 +439,10 @@ async def main():
         await process_message(message, client, config=config)
 
     setup_callback_handlers(app)
+    
+    # Trigger auto-scan on startup
+    asyncio.create_task(auto_history_scan(days=2))
+    
     asyncio.create_task(maintenance_loop())
     
     logger.info("👂 Bot ready and listening.")
@@ -396,7 +453,10 @@ async def main():
 async def maintenance_loop():
     while True:
         try:
-            if app.is_connected: await check_scan_requests()
+            if app.is_connected: 
+                await check_scan_requests()
+                # Check for periodic auto-scan (handled internally by 6h logic)
+                await auto_history_scan(days=1)
         except: pass
         await asyncio.sleep(10)
 
