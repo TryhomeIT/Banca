@@ -47,6 +47,7 @@ const SystemControl = () => {
     const [showAIModal, setShowAIModal] = useState(false);
     const [showUserModal, setShowUserModal] = useState(false);
     const [showContentModal, setShowContentModal] = useState(false);
+    const [showDiscoverModal, setShowDiscoverModal] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -86,7 +87,77 @@ const SystemControl = () => {
         <div className="section">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
 
-                {/* 1. Telegram Bot Status Card */}
+                {/* 1. Files Status Card */}
+                <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '10px',
+                                background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
+                            }}>
+                                📂
+                            </div>
+                            <div>
+                                <h4 style={{ fontSize: '1rem', marginBottom: '0.1rem' }}>Files</h4>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                    {fileCount} total publication{fileCount !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{
+                            padding: '0.25rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600',
+                            background: 'rgba(255, 255, 255, 0.1)', color: '#cbd5e1'
+                        }}>
+                            {fileCount}
+                        </div>
+                    </div>
+
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => setShowContentModal(true)}
+                        style={{ marginTop: 'auto', width: '100%' }}
+                    >
+                        Manage Files & Retention
+                    </button>
+                </div>
+
+                {/* 2. Discover Status Card */}
+                <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '10px',
+                                background: 'rgba(250, 204, 21, 0.15)', color: '#facc15',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
+                            }}>
+                                🌍
+                            </div>
+                            <div>
+                                <h4 style={{ fontSize: '1rem', marginBottom: '0.1rem' }}>Discover</h4>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                    Review Telegram titles by country
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{
+                            padding: '0.25rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600',
+                            background: 'rgba(250, 204, 21, 0.15)', color: '#facc15'
+                        }}>
+                            New
+                        </div>
+                    </div>
+
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => setShowDiscoverModal(true)}
+                        style={{ marginTop: 'auto', width: '100%' }}
+                    >
+                        Open Discover
+                    </button>
+                </div>
+
+                {/* 3. Telegram Bot Status Card */}
                 <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -133,7 +204,7 @@ const SystemControl = () => {
                     </div>
                 </div>
 
-                {/* 2. Gemini AI Status Card */}
+                {/* 4. Gemini AI Status Card */}
                 <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -166,42 +237,6 @@ const SystemControl = () => {
                         style={{ marginTop: 'auto', width: '100%' }}
                     >
                         Configure AI
-                    </button>
-                </div>
-
-
-                {/* 4. Files Status Card */}
-                <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{
-                                width: '40px', height: '40px', borderRadius: '10px',
-                                background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
-                            }}>
-                                📂
-                            </div>
-                            <div>
-                                <h4 style={{ fontSize: '1rem', marginBottom: '0.1rem' }}>Files</h4>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                    {fileCount} total publication{fileCount !== 1 ? 's' : ''}
-                                </span>
-                            </div>
-                        </div>
-                        <div style={{
-                            padding: '0.25rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600',
-                            background: 'rgba(255, 255, 255, 0.1)', color: '#cbd5e1'
-                        }}>
-                            {fileCount}
-                        </div>
-                    </div>
-
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => setShowContentModal(true)}
-                        style={{ marginTop: 'auto', width: '100%' }}
-                    >
-                        Manage Files & Retention
                     </button>
                 </div>
 
@@ -246,6 +281,7 @@ const SystemControl = () => {
             {showAIModal && <AIConfigModal onClose={() => { setShowAIModal(false); fetchData(); }} />}
             {showUserModal && <UserManagementModal onClose={() => { setShowUserModal(false); fetchData(); }} />}
             {showContentModal && <ContentConfigModal onClose={() => { setShowContentModal(false); fetchData(); }} />}
+            {showDiscoverModal && <DiscoverModal onClose={() => setShowDiscoverModal(false)} />}
         </div>
     );
 };
@@ -262,10 +298,10 @@ const ContentConfigModal = ({ onClose }) => {
     const [rulesSearch, setRulesSearch] = useState('');
     const [pendingSearch, setPendingSearch] = useState('');
 
-    // Sync Status & Logs
+    // Sync Status & Recent Magazines
     const [isSyncing, setIsSyncing] = useState(false);
-    const [syncLogs, setSyncLogs] = useState([]);
-    const logsEndRef = useRef(null);
+    const [recentMagazines, setRecentMagazines] = useState([]);
+    const [recentMagazinesLoading, setRecentMagazinesLoading] = useState(true);
 
     const fetchData = async () => {
         try {
@@ -282,59 +318,60 @@ const ContentConfigModal = ({ onClose }) => {
         }
     };
 
+    const fetchRecentMagazines = async () => {
+        try {
+            const response = await api.get('/publications/', {
+                params: { category: 'magazine', limit: 500 }
+            });
+            const cutoff = Date.now() - (24 * 60 * 60 * 1000);
+            const recent = (response.data || [])
+                .filter((publication) => publication.created_at && new Date(publication.created_at).getTime() >= cutoff)
+                .sort((left, right) => new Date(right.created_at) - new Date(left.created_at));
+            setRecentMagazines(recent);
+        } catch (err) {
+            console.error('Failed to fetch recent magazines:', err);
+        } finally {
+            setRecentMagazinesLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchData();
+        fetchRecentMagazines();
     }, []);
 
-    // Polling logs during sync
     useEffect(() => {
-        let interval;
-        if (isSyncing) {
-            interval = setInterval(async () => {
-                try {
-                    const response = await api.get('/admin/logs?type=telegram_bot&lines=50');
-                    if (response.data.logs) {
-                        const lines = response.data.logs.split('\n');
-                        // Filter for relevant logs or just show the tail
-                        setSyncLogs(lines.filter(l => l.trim() !== ''));
+        const interval = setInterval(() => {
+            fetchRecentMagazines();
+        }, isSyncing ? 5000 : 15000);
 
-                        // Check for completion signal in logs
-                        if (response.data.logs.includes('Scan complete')) {
-                            setIsSyncing(false);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch sync logs", error);
-                }
-            }, 2000);
-        }
         return () => clearInterval(interval);
     }, [isSyncing]);
-
-    // Auto-scroll to bottom of logs
-    useEffect(() => {
-        if (logsEndRef.current) {
-            logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [syncLogs]);
 
     // Manual Actions
     const handleSync = async (days) => {
         if (!confirm(`Scan history for last ${days} days? This may take a while.`)) return;
-        setSyncLogs([`Starting sync for last ${days} days...`]);
         setIsSyncing(true);
-        try { await api.post(`/admin/telegram/scan/days?days=${days}`); }
-        catch {
-            setSyncLogs(prev => [...prev, 'Failed to start sync command.']);
+        try {
+            await api.post(`/admin/telegram/scan/days?days=${days}`);
+            await fetchRecentMagazines();
+        } catch {
+            alert('Failed to start scan');
+        } finally {
             setIsSyncing(false);
         }
     };
 
     const handleScanOthers = async () => {
-        setSyncLogs(['Scanning "Others" folder...']);
         setIsSyncing(true);
-        try { await api.post('/admin/telegram/scan/outros'); }
-        catch { setIsSyncing(false); }
+        try {
+            await api.post('/admin/telegram/scan/outros');
+            await fetchRecentMagazines();
+        } catch {
+            alert('Failed to process "Others" folder');
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
 
@@ -345,30 +382,15 @@ const ContentConfigModal = ({ onClose }) => {
 
     const handleCleanup = async () => {
         if (!confirm('⚠️ WARNING: This will DELETE ALL records and files, then re-download the last 7 days. Continue?')) return;
-        setSyncLogs(['🧹 Starting full cleanup...']);
         setIsSyncing(true);
         try {
             const response = await api.post('/admin/telegram/cleanup');
-            setSyncLogs(prev => [...prev, '✅ ' + response.data.message]);
+            alert(response.data.message);
+            await fetchRecentMagazines();
         } catch (err) {
-            setSyncLogs(prev => [...prev, '❌ Cleanup failed: ' + (err.response?.data?.detail || err.message)]);
+            alert('Cleanup failed: ' + (err.response?.data?.detail || err.message));
+        } finally {
             setIsSyncing(false);
-        }
-    };
-
-    const handleDownloadLogs = async () => {
-        try {
-            const response = await api.get('/admin/logs/download?type=telegram_bot', { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `telegram_bot_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.log`);
-            document.body.appendChild(link);
-            link.click();
-            link.parentNode.removeChild(link);
-        } catch (err) {
-            console.error(err);
-            alert('Failed to download logs');
         }
     };
 
@@ -473,7 +495,7 @@ const ContentConfigModal = ({ onClose }) => {
     };
 
     return (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '1rem', paddingBottom: '1rem' }}>
             <div className="modal" style={{ maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
                 <div className="modal-header">
                     <h4 className="modal-title">File Management</h4>
@@ -517,7 +539,7 @@ const ContentConfigModal = ({ onClose }) => {
                                         </button>
                                     </div>
 
-                                    {/* Log Viewer for Sync Tasks */}
+                                    {/* Recent Magazines Added in the Last 24 Hours */}
                                     <div style={{
                                         background: 'rgba(0, 0, 0, 0.3)',
                                         borderRadius: '8px',
@@ -525,36 +547,64 @@ const ContentConfigModal = ({ onClose }) => {
                                         marginTop: '0.5rem',
                                         border: '1px solid var(--glass-border)'
                                     }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: '600' }}>
-                                                {isSyncing ? '🟢 TASK RUNNING...' : 'TASK LOGS'}
-                                            </span>
-                                            {isSyncing && <span className="loading-spinner" style={{ width: '14px', height: '14px' }}></span>}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center', gap: '1rem' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: '600' }}>
+                                                    MAGAZINES ADDED IN THE LAST 24 HOURS
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
+                                                    {recentMagazines.length} item{recentMagazines.length !== 1 ? 's' : ''} found
+                                                </div>
+                                            </div>
+                                            <button
+                                                className="btn btn-secondary"
+                                                onClick={fetchRecentMagazines}
+                                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem', whiteSpace: 'nowrap' }}
+                                            >
+                                                Refresh List
+                                            </button>
                                         </div>
                                         <div style={{
                                             height: '200px',
                                             overflowY: 'auto',
-                                            fontFamily: 'monospace',
-                                            fontSize: '0.8rem',
-                                            color: '#cbd5e1',
-                                            whiteSpace: 'pre-wrap'
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.5rem'
                                         }}>
-                                            {syncLogs.length > 0 ? (
-                                                syncLogs.map((log, i) => (
-                                                    <div key={i} style={{ marginBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                                        {log}
+                                            {recentMagazinesLoading ? (
+                                                <div className="loading-spinner"></div>
+                                            ) : recentMagazines.length > 0 ? (
+                                                recentMagazines.map((publication) => (
+                                                    <div
+                                                        key={publication.id}
+                                                        style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            gap: '1rem',
+                                                            padding: '0.75rem 0',
+                                                            borderBottom: '1px solid rgba(255,255,255,0.05)'
+                                                        }}
+                                                    >
+                                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                                            <div style={{ color: '#f8fafc', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {publication.title}
+                                                            </div>
+                                                            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                                                                Added {new Date(publication.created_at).toLocaleString()}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                                                            {publication.page_count} pages
+                                                        </div>
                                                     </div>
                                                 ))
                                             ) : (
-                                                <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>No active task logs...</span>
+                                                <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                                                    No magazines were added in the last 24 hours.
+                                                </span>
                                             )}
-                                            <div ref={logsEndRef} />
                                         </div>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                                        <button className="btn btn-secondary" onClick={handleDownloadLogs} style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}>
-                                            📥 Download Full Log
-                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -686,6 +736,209 @@ const ContentConfigModal = ({ onClose }) => {
     );
 };
 
+const DiscoverModal = ({ onClose }) => {
+    const [discoverData, setDiscoverData] = useState({ items: [], countries: [], summary: { total: 0, countries: 0, selected: 0 } });
+    const [loading, setLoading] = useState(true);
+    const [savingId, setSavingId] = useState(null);
+    const [search, setSearch] = useState('');
+    const [countryFilter, setCountryFilter] = useState('All');
+
+    const fetchDiscoveries = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/admin/discover');
+            setDiscoverData(response.data);
+        } catch (err) {
+            console.error('Failed to load discover catalog:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDiscoveries();
+    }, []);
+
+    const handleAdd = async (title, category) => {
+        try {
+            setSavingId(`${title}:${category}`);
+            await api.post('/admin/publications/add', { category, item: title });
+            await fetchDiscoveries();
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Failed to add publication');
+        } finally {
+            setSavingId(null);
+        }
+    };
+
+    const filteredItems = (discoverData.items || []).filter((item) => {
+        const matchesSearch = !search || [item.title, item.filename, item.caption, item.country, ...(item.available_dates || [])]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(search.toLowerCase()));
+        const matchesCountry = countryFilter === 'All' || item.country === countryFilter;
+        return matchesSearch && matchesCountry;
+    });
+
+    const groupedItems = filteredItems.reduce((groups, item) => {
+        const country = item.country || 'Unknown';
+        if (!groups[country]) {
+            groups[country] = [];
+        }
+        groups[country].push(item);
+        return groups;
+    }, {});
+
+    const orderedCountries = Object.keys(groupedItems).sort((left, right) => left.localeCompare(right));
+
+    const formatStatus = (status) => {
+        const labels = {
+            unmatched: 'Seen only',
+            already_processed: 'Already processed',
+            saved: 'Saved',
+            saved_via_keyword: 'Saved via keyword',
+            saved_to_others: 'Saved to Others',
+            sent_to_review: 'Sent to review',
+            flood_wait: 'Rate limited',
+            error: 'Error',
+        };
+        return labels[status] || status || 'Seen';
+    };
+
+    const formatTimestamp = (value) => {
+        if (!value) {
+            return 'Unknown';
+        }
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+    };
+
+    const formatDay = (value) => {
+        if (!value) {
+            return 'Unknown';
+        }
+        const date = new Date(`${value}T00:00:00`);
+        return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+    };
+
+    return (
+        <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '1rem', paddingBottom: '1rem' }}>
+            <div className="modal" style={{ maxWidth: '1100px', height: '82vh', display: 'flex', flexDirection: 'column' }}>
+                <div className="modal-header">
+                    <h4 className="modal-title">Discover</h4>
+                    <button className="modal-close" onClick={onClose}>✕</button>
+                </div>
+
+                <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                        <input
+                            className="input"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search title, file name, caption, or country..."
+                            style={{ flex: '1 1 360px' }}
+                        />
+                        <select
+                            className="input"
+                            value={countryFilter}
+                            onChange={(e) => setCountryFilter(e.target.value)}
+                            style={{ flex: '0 0 220px' }}
+                        >
+                            <option value="All">All countries</option>
+                            {(discoverData.countries || []).map((country) => (
+                                <option key={country} value={country}>{country}</option>
+                            ))}
+                        </select>
+                        <button className="btn btn-secondary" onClick={fetchDiscoveries}>Refresh</button>
+                    </div>
+
+                    {loading ? (
+                        <div className="loading-spinner"></div>
+                    ) : orderedCountries.length === 0 ? (
+                        <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '3rem 1rem' }}>
+                            No discovered Telegram files yet. Run a channel scan or let the bot monitor live messages to populate this page.
+                        </div>
+                    ) : (
+                        orderedCountries.map((country) => (
+                            <section key={country} style={{ marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                    <h5 style={{ margin: 0, fontSize: '1rem' }}>{country}</h5>
+                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{groupedItems[country].length} item{groupedItems[country].length !== 1 ? 's' : ''}</span>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0.75rem' }}>
+                                    {groupedItems[country].map((item) => {
+                                        const alreadySelected = item.selected_category;
+                                        return (
+                                            <div key={item.id} className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: '700', color: '#f8fafc', marginBottom: '0.2rem' }}>{item.title}</div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', wordBreak: 'break-word' }}>
+                                                        Latest file: {item.filename}
+                                                    </div>
+                                                </div>
+
+                                                {item.caption && (
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                                        {item.caption}
+                                                    </div>
+                                                )}
+
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                    <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: '#cbd5e1' }}>{formatStatus(item.status)}</span>
+                                                    {item.suggested_category && (
+                                                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#93c5fd' }}>
+                                                            Suggests {item.suggested_category}
+                                                        </span>
+                                                    )}
+                                                    {alreadySelected && (
+                                                        <span className="badge" style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#86efac' }}>
+                                                            In {alreadySelected}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                                                    {item.file_count} file{item.file_count !== 1 ? 's' : ''} found • Last seen {formatTimestamp(item.last_seen_at)}
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                    {(item.available_dates || []).map((date) => (
+                                                        <span key={`${item.id}:${date}`} className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: '#cbd5e1' }}>
+                                                            {formatDay(date)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        className="btn btn-secondary"
+                                                        onClick={() => handleAdd(item.title, 'jornais')}
+                                                        disabled={savingId === `${item.title}:jornais` || alreadySelected === 'newspaper'}
+                                                        style={{ flex: '1 1 140px' }}
+                                                    >
+                                                        {savingId === `${item.title}:jornais` ? 'Saving...' : alreadySelected === 'newspaper' ? 'Added as Newspaper' : 'Add as Newspaper'}
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-secondary"
+                                                        onClick={() => handleAdd(item.title, 'revistas')}
+                                                        disabled={savingId === `${item.title}:revistas` || alreadySelected === 'magazine'}
+                                                        style={{ flex: '1 1 140px' }}
+                                                    >
+                                                        {savingId === `${item.title}:revistas` ? 'Saving...' : alreadySelected === 'magazine' ? 'Added as Magazine' : 'Add as Magazine'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const UserManagementModal = ({ onClose }) => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -741,7 +994,7 @@ const UserManagementModal = ({ onClose }) => {
     };
 
     return (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '1rem', paddingBottom: '1rem' }}>
             <div className="modal" style={{ maxWidth: '700px' }}>
                 <div className="modal-header">
                     <h4 className="modal-title">User Management</h4>
@@ -886,7 +1139,7 @@ const TelegramConfigModal = ({ onClose }) => {
     };
 
     return (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '1rem', paddingBottom: '1rem' }}>
             <div className="modal">
                 <div className="modal-header">
                     <h4 className="modal-title">Telegram Configuration</h4>
@@ -959,7 +1212,7 @@ const AIConfigModal = ({ onClose }) => {
     };
 
     return (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '1rem', paddingBottom: '1rem' }}>
             <div className="modal">
                 <div className="modal-header">
                     <h4 className="modal-title">AI Configuration</h4>

@@ -1,0 +1,361 @@
+[
+  {
+    "country": "Portugal",
+    "category": "newspaper",
+    "aliases": [
+      "A Bola",
+      "Ataque JN",
+      "Atlântico Expresso",
+      "Açoriano Oriental",
+      "CM",
+      "CM + Boa Onda",
+      "CM + Domingo",
+      "Correio do Minho",
+      "Correio dos Açores",
+      "DN",
+      "DN + Dinheiro Vivo + DN Sport",
+      "Desportivo de Guimarães",
+      "Diário Insular",
+      "Diário de Aveiro",
+      "Diário de Coimbra",
+      "Diário de Leiria",
+      "Diário de Viseu",
+      "Diário do Alentejo",
+      "Diário do Minho",
+      "Diário dos Açores",
+      "Evasões JN",
+      "Expresso + Ideias + Economia + E",
+      "Fugas Público",
+      "JE",
+      "JL",
+      "JM",
+      "JN",
+      "Jornal Nordeste",
+      "Jornal Nordeste 1",
+      "Jornal da Marinha Grande",
+      "Jornal das Caldas",
+      "Negócios",
+      "Negócios + Weekend",
+      "Notícias Magazine JN",
+      "O Benfica",
+      "O Jogo",
+      "O Jornal de Vieira",
+      "P2 Público",
+      "Público LX",
+      "Público OPO",
+      "Público OP0",
+      "Record"
+    ]
+  },
+  {
+    "country": "Portugal",
+    "category": "magazine",
+    "aliases": [
+      "A Aurora do Lima",
+      "Abolsamia",
+      "Ambiente",
+      "Antram",
+      "Apat",
+      "As Beiras",
+      "Ataque JN",
+      "Automotive",
+      "Açores Açoriano Oriental",
+      "Açoriano Oriental",
+      "Boletim do Trabalho e Emprego",
+      "Casas de Portugal",
+      "Cidade Hoje",
+      "Combatente",
+      "Comércio do Seixal e Sesimbra",
+      "Deco Proteste",
+      "Dependências",
+      "Eco de Vagos",
+      "Evasões JN",
+      "Executive Digest",
+      "Human Resources",
+      "IN Corporate",
+      "Imobiliário Público",
+      "Informática Fácil",
+      "Labor.PT",
+      "Mais Guimarães",
+      "Mais Magazine",
+      "Mais Semanário",
+      "MaisSport",
+      "Marketeer",
+      "Maré Viva",
+      "Mãos Unidas",
+      "Nova Gente",
+      "O Comércio de Guimarães",
+      "O Interior",
+      "O JornalDentistry",
+      "O Povo Famalicense",
+      "Palavrar",
+      "Running",
+      "Sábado + Gps",
+      "Saúde Deco Proteste",
+      "Sporting",
+      "TVGuia",
+      "Urbana",
+      "Versa Nascer do Sol",
+      "Viva Douro",
+      "Ípsilon Público"
+    ]
+  },
+  {
+    "country": "United States",
+    "category": "newspaper",
+    "aliases": [
+      "The New York Times",
+      "The Wall Street Journal",
+      "USA Today",
+      "Washington Post",
+      "Los Angeles Times",
+      "New York Post",
+      "Chicago Tribune"
+    ]
+  },
+  {
+    "country": "United Kingdom",
+    "category": "newspaper",
+    "aliases": [
+      "The Guardian",
+      "The Times",
+      "The Daily Telegraph",
+      "Financial Times",
+      "Daily Mail",
+      "Daily Mirror",
+      "The Sun",
+      "The Independent"
+    ]
+  },
+  {
+    "country": "Spain",
+    "category": "newspaper",
+    "aliases": [
+      "El País",
+      "El Mundo",
+      "ABC",
+      "La Vanguardia",
+      "La Razón",
+      "Marca",
+      "AS",
+      "Sport",
+      "Mundo Deportivo",
+      "Expansión",
+      "Cinco Días"
+    ]
+  },
+  {
+    "country": "Italy",
+    "category": "newspaper",
+    "aliases": [
+      "Corriere della Sera",
+      "La Repubblica",
+      "La Stampa",
+      "Il Sole 24 Ore",
+      "Gazzetta dello Sport",
+      "Tuttosport",
+      "Avvenire",
+      "Il Messaggero"
+    ]
+  },
+  {
+    "country": "France",
+    "category": "newspaper",
+    "aliases": [
+      "Le Monde",
+      "Le Figaro",
+      "Libération",
+      "Les Echos",
+      "L'Équipe",
+      "Le Parisien"
+    ]
+  },
+  {
+    "country": "Germany",
+    "category": "newspaper",
+    "aliases": [
+      "Bild",
+      "Die Welt",
+      "Süddeutsche Zeitung",
+      "Frankfurter Allgemeine Zeitung",
+      "Handelsblatt",
+      "taz"
+    ]
+  },
+  {
+    "country": "Netherlands",
+    "category": "newspaper",
+    "aliases": [
+      "De Telegraaf",
+      "NRC",
+      "Algemeen Dagblad",
+      "de Volkskrant",
+      "Trouw",
+      "Het Parool"
+    ]
+  },
+  {
+    "country": "Belgium",
+    "category": "newspaper",
+    "aliases": [
+      "De Standaard",
+      "Het Laatste Nieuws",
+      "Le Soir",
+      "La Libre Belgique"
+    ]
+  },
+  {
+    "country": "Switzerland",
+    "category": "newspaper",
+    "aliases": [
+      "Neue Zürcher Zeitung",
+      "Tages-Anzeiger",
+      "Le Temps",
+      "Blick"
+    ]
+  },
+  {
+    "country": "Austria",
+    "category": "newspaper",
+    "aliases": [
+      "Kronen Zeitung",
+      "Der Standard",
+      "Die Presse",
+      "Kurier"
+    ]
+  },
+  {
+    "country": "Brazil",
+    "category": "newspaper",
+    "aliases": [
+      "Folha de S.Paulo",
+      "O Globo",
+      "Estado de S. Paulo",
+      "Valor Econômico",
+      "Zero Hora",
+      "Correio Braziliense"
+    ]
+  },
+  {
+    "country": "Argentina",
+    "category": "newspaper",
+    "aliases": [
+      "Clarín",
+      "La Nación",
+      "Página/12"
+    ]
+  },
+  {
+    "country": "Mexico",
+    "category": "newspaper",
+    "aliases": [
+      "Reforma",
+      "El Universal",
+      "Milenio",
+      "La Jornada"
+    ]
+  },
+  {
+    "country": "Canada",
+    "category": "newspaper",
+    "aliases": [
+      "The Globe and Mail",
+      "Toronto Star",
+      "National Post",
+      "La Presse"
+    ]
+  },
+  {
+    "country": "Ireland",
+    "category": "newspaper",
+    "aliases": [
+      "Irish Times",
+      "Irish Independent",
+      "The Irish Examiner"
+    ]
+  },
+  {
+    "country": "Sweden",
+    "category": "newspaper",
+    "aliases": [
+      "Dagens Nyheter",
+      "Svenska Dagbladet",
+      "Aftonbladet",
+      "Expressen"
+    ]
+  },
+  {
+    "country": "Norway",
+    "category": "newspaper",
+    "aliases": [
+      "Aftenposten",
+      "VG",
+      "Dagbladet"
+    ]
+  },
+  {
+    "country": "Denmark",
+    "category": "newspaper",
+    "aliases": [
+      "Politiken",
+      "Berlingske",
+      "Jyllands-Posten"
+    ]
+  },
+  {
+    "country": "Finland",
+    "category": "newspaper",
+    "aliases": [
+      "Helsingin Sanomat",
+      "Ilta-Sanomat",
+      "Iltalehti"
+    ]
+  },
+  {
+    "country": "Australia",
+    "category": "newspaper",
+    "aliases": [
+      "The Australian",
+      "Sydney Morning Herald",
+      "The Age",
+      "Herald Sun"
+    ]
+  },
+  {
+    "country": "New Zealand",
+    "category": "newspaper",
+    "aliases": [
+      "New Zealand Herald",
+      "The Press"
+    ]
+  },
+  {
+    "country": "Japan",
+    "category": "newspaper",
+    "aliases": [
+      "Yomiuri Shimbun",
+      "Asahi Shimbun",
+      "Mainichi Shimbun",
+      "Nikkei"
+    ]
+  },
+  {
+    "country": "India",
+    "category": "newspaper",
+    "aliases": [
+      "The Times of India",
+      "The Hindu",
+      "Hindustan Times",
+      "Indian Express"
+    ]
+  },
+  {
+    "country": "South Africa",
+    "category": "newspaper",
+    "aliases": [
+      "Mail & Guardian",
+      "Sunday Times",
+      "Business Day"
+    ]
+  }
+]

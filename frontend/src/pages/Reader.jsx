@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Document, Page, pdfjs } from 'react-pdf';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 // Configure PDF.js worker to use a version-matched CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -11,6 +12,7 @@ const Reader = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const { user } = useAuth();
     const containerRef = useRef(null);
 
     const [publication, setPublication] = useState(null);
@@ -182,6 +184,26 @@ const Reader = () => {
         }
     };
 
+    const stopDownloadingTitle = async () => {
+        if (!publication || !user?.is_admin) return;
+
+        const confirmed = window.confirm(
+            `Remove "${publication.title}" from downloads, ignore it in future scans, and delete all downloaded issues?`
+        );
+        if (!confirmed) return;
+
+        try {
+            await api.post('/admin/publications/stop-downloading', {
+                title: publication.title,
+                category: publication.category,
+            });
+            navigate('/');
+        } catch (error) {
+            console.error('Failed to stop downloading title:', error);
+            alert(error.response?.data?.detail || 'Failed to remove this title');
+        }
+    };
+
     const onDocumentLoadSuccess = ({ numPages }) => {
         setNumPages(numPages);
         setLoading(false);
@@ -234,6 +256,15 @@ const Reader = () => {
                 </div>
 
                 <div className="reader-header-right">
+                    {user?.is_admin && (
+                        <button
+                            className="reader-remove-btn"
+                            onClick={stopDownloadingTitle}
+                            title="Stop downloading this title and delete existing issues"
+                        >
+                            Remove Title
+                        </button>
+                    )}
                     <button
                         className={`reader-favorite-btn ${publication?.is_favorite ? 'is-favorite' : ''}`}
                         onClick={toggleFavorite}

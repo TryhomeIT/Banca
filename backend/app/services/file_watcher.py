@@ -8,7 +8,7 @@ and automatically imports them into the Jornais web app database.
 import os
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Dict, Any
 import shutil
@@ -20,8 +20,9 @@ load_dotenv()
 
 from ..config import settings
 from ..database import SessionLocal
-from ..models import Publication
-from .pdf_service import generate_thumbnail
+from ..models import Publication, ReadingProgress
+from .pdf_service import generate_thumbnail, delete_publication_files
+from .settings import settings_service
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,114 @@ THUMBNAILS_FOLDER = os.path.join(DATA_DIR, 'thumbnails')
 # Track already processed files
 processed_files_cache: Dict[str, datetime] = {}
 
+RETENTION_SETTINGS = {
+    'newspaper': 'DOWNLOADS_RETENTION_DAYS_JORNAIS',
+    'magazine': 'DOWNLOADS_RETENTION_DAYS_REVISTAS',
+}
+
+SOURCE_FOLDERS_BY_CATEGORY = {
+    'newspaper': ['Jornais', 'jornais'],
+    'magazine': ['Revistas', 'revistas'],
+}
+
 def ensure_folders_exist():
     """Create category folders if they don't exist."""
     for folder in [JORNAIS_FOLDER, REVISTAS_FOLDER, OTHERS_FOLDER]:
         os.makedirs(folder, exist_ok=True)
+
+def delete_source_publication_file(original_filename: str, category: str):
+    """Delete the original downloaded file from the source category folder if it still exists."""
+    if not original_filename:
+        return
+
+    for folder_name in SOURCE_FOLDERS_BY_CATEGORY.get(category, []):
+        candidate = Path(DATA_DIR) / folder_name / original_filename
+        if candidate.exists():
+            try:
+                candidate.unlink()
+            except Exception as exc:
+                logger.warning(f"Failed to delete source file {candidate}: {exc}")
+
+def get_publication_reference_date(publication: Publication) -> Optional[datetime]:
+    """Return the best available date for retention comparisons."""
+    return publication.publication_date or publication.created_at
+
+def derive_publication_date(file_path: str) -> datetime:
+    """Use the file modification time as fallback when the filename has no embedded date."""
+    try:
+        return datetime.fromtimestamp(os.path.getmtime(file_path))
+    except OSError:
+        return datetime.utcnow()
+
+def enforce_retention_policies(db=None) -> int:
+    """Remove expired publications and files based on configured retention days.
+
+    The newest issue for each title is always preserved, even if it falls outside
+    the configured retention window.
+    """
+    own_session = db is None
+    if own_session:
+        db = SessionLocal()
+
+    removed_count = 0
+
+    try:
+        now = datetime.utcnow()
+
+        for category, setting_key in RETENTION_SETTINGS.items():
+            raw_days = settings_service.get_setting(db, setting_key)
+            try:
+                retention_days = int(raw_days)
+            except (TypeError, ValueError):
+                continue
+
+            cutoff = now - timedelta(days=retention_days)
+            publications = db.query(Publication).filter(Publication.category == category).all()
+
+            latest_publication_ids_by_title = {}
+            for publication in publications:
+                title = publication.title or ''
+                current_latest = latest_publication_ids_by_title.get(title)
+                publication_key = (
+                    get_publication_reference_date(publication) or datetime.min,
+                    publication.created_at or datetime.min,
+                    publication.id,
+                )
+
+                if current_latest is None or publication_key > current_latest[0]:
+                    latest_publication_ids_by_title[title] = (publication_key, publication.id)
+
+            protected_ids = {
+                publication_id for _, publication_id in latest_publication_ids_by_title.values()
+            }
+
+            for publication in publications:
+                reference_date = get_publication_reference_date(publication)
+                if reference_date is None or reference_date >= cutoff:
+                    continue
+                if publication.id in protected_ids:
+                    continue
+
+                try:
+                    db.query(ReadingProgress).filter(
+                        ReadingProgress.publication_id == publication.id
+                    ).delete(synchronize_session=False)
+                    delete_publication_files(publication.filename, publication.thumbnail_path)
+                    delete_source_publication_file(publication.original_filename, category)
+                    db.delete(publication)
+                    db.commit()
+                    removed_count += 1
+                except Exception as exc:
+                    db.rollback()
+                    logger.error(f"Failed to prune expired publication {publication.id}: {exc}")
+
+        if removed_count:
+            logger.info(f"🧹 Retention cleanup removed {removed_count} expired publications")
+
+        return removed_count
+    finally:
+        if own_session:
+            db.close()
 
 def get_category_from_folder(folder_path: str) -> str:
     """Get category name from folder path."""
@@ -176,11 +281,17 @@ def import_pdf_to_database(file_path: str, category: str) -> Optional[Publicatio
         
         if existing:
             needs_update = False
+            fallback_date = derive_publication_date(file_path)
             
             # 1. If category changed (e.g. moved from Others to Jornais), update it
             if existing.category != category:
                 logger.info(f"🔄 Updating category for {filename}: {existing.category} -> {category}")
                 existing.category = category
+                needs_update = True
+
+            # 1b. Backfill missing publication dates using the download/import timestamp.
+            if not existing.publication_date:
+                existing.publication_date = fallback_date
                 needs_update = True
                 
             # 2. Check if PDF file exists in uploads, if not try to restore it
@@ -217,7 +328,7 @@ def import_pdf_to_database(file_path: str, category: str) -> Optional[Publicatio
         
         # Extract publication info
         title = extract_publication_name(filename)
-        pub_date = parse_publication_date(filename)
+        pub_date = parse_publication_date(filename) or derive_publication_date(file_path)
         file_size = os.path.getsize(file_path)
         
         # Copy to uploads folder - Use UUID for absolute uniqueness
@@ -292,6 +403,7 @@ def scan_all_folders(force: bool = False) -> Dict[str, int]:
         processed_files_cache.clear()
         
     ensure_folders_exist()
+    enforce_retention_policies()
     
     results = {
         'jornais': scan_folder(JORNAIS_FOLDER, 'newspaper'),

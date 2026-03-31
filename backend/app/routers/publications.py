@@ -21,12 +21,19 @@ from ..services import (
     generate_thumbnail,
     save_uploaded_file,
     delete_publication_files,
+    enforce_retention_policies,
 )
 from ..config import settings
 
 import unicodedata
 
 logger = logging.getLogger(__name__)
+
+def build_publication_response_dict(publication: Publication) -> dict:
+    pub_dict = PublicationResponse.model_validate(publication).model_dump()
+    if not pub_dict.get("publication_date"):
+        pub_dict["publication_date"] = publication.created_at
+    return pub_dict
 
 def check_path_exists_unicode(path_str: str) -> Optional[str]:
     """
@@ -67,6 +74,7 @@ async def get_publications(
     db: Session = Depends(get_db)
 ):
     """Get all publications with reading progress for current user. Favorites from today appear first."""
+    enforce_retention_policies(db)
     query = db.query(Publication)
     
     if category:
@@ -123,7 +131,7 @@ async def get_publications(
             ReadingProgress.publication_id == pub.id
         ).first()
         
-        pub_dict = PublicationResponse.model_validate(pub).model_dump()
+        pub_dict = build_publication_response_dict(pub)
         pub_dict["current_page"] = progress.current_page if progress else 1
         pub_dict["last_read_at"] = progress.last_read_at if progress else None
         pub_dict["is_favorite"] = pub.title in favorite_titles
@@ -139,6 +147,7 @@ async def get_recent_publications(
     db: Session = Depends(get_db)
 ):
     """Get recently read publications for current user."""
+    enforce_retention_policies(db)
     progress_list = db.query(ReadingProgress).filter(
         ReadingProgress.user_id == current_user.id
     ).order_by(desc(ReadingProgress.last_read_at)).limit(limit).all()
@@ -152,7 +161,7 @@ async def get_recent_publications(
     result = []
     for progress in progress_list:
         pub = progress.publication
-        pub_dict = PublicationResponse.model_validate(pub).model_dump()
+        pub_dict = build_publication_response_dict(pub)
         pub_dict["current_page"] = progress.current_page
         pub_dict["last_read_at"] = progress.last_read_at
         pub_dict["is_favorite"] = pub.title in favorite_titles
@@ -166,6 +175,7 @@ async def get_categories(
     db: Session = Depends(get_db)
 ):
     """Get all unique categories."""
+    enforce_retention_policies(db)
     categories = db.query(Publication.category).distinct().filter(
         Publication.category.isnot(None)
     ).all()
@@ -178,6 +188,7 @@ async def get_publication(
     db: Session = Depends(get_db)
 ):
     """Get a single publication with reading progress."""
+    enforce_retention_policies(db)
     publication = db.query(Publication).filter(Publication.id == publication_id).first()
     if not publication:
         raise HTTPException(status_code=404, detail="Publication not found")
@@ -186,10 +197,16 @@ async def get_publication(
         ReadingProgress.user_id == current_user.id,
         ReadingProgress.publication_id == publication_id
     ).first()
+
+    is_favorite = db.query(UserFavorite).filter(
+        UserFavorite.user_id == current_user.id,
+        UserFavorite.publication_title == publication.title
+    ).first() is not None
     
-    pub_dict = PublicationResponse.model_validate(publication).model_dump()
+    pub_dict = build_publication_response_dict(publication)
     pub_dict["current_page"] = progress.current_page if progress else 1
     pub_dict["last_read_at"] = progress.last_read_at if progress else None
+    pub_dict["is_favorite"] = is_favorite
     
     return PublicationWithProgress(**pub_dict)
 
@@ -223,6 +240,8 @@ async def upload_publication(
             pub_date = datetime.fromisoformat(publication_date)
         except ValueError:
             pass
+    if pub_date is None:
+        pub_date = datetime.utcnow()
     
     # Create publication record
     publication = Publication(

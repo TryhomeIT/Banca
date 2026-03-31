@@ -70,6 +70,9 @@ SCAN_REQUEST_FILE = os.path.join(DATA_DIR, 'scan_request.json')
 ACTIVITY_LOG_FILE = os.path.join(DATA_DIR, 'activity_log.json')
 PID_LOCK_FILE = os.path.join(DATA_DIR, 'telegram_bot.pid')
 LAST_AUTO_SCAN_FILE = os.path.join(DATA_DIR, 'last_auto_scan.json')
+DISCOVERED_PUBLICATIONS_FILE = os.path.join(DATA_DIR, 'discovered_publications.json')
+DISCOVERY_CATALOG_FILE = Path(__file__).resolve().parent.parent / 'app' / 'data' / 'publication_catalog.json'
+MAX_DISCOVERED_PUBLICATIONS = 5000
 
 # Global instances
 app = None
@@ -147,10 +150,134 @@ def load_publications_config():
         with open(p_file, 'r', encoding='utf-8') as f: return json.load(f)
     except: return {"jornais": [], "revistas": [], "keywords": [], "topics": []}
 
+def load_discovery_catalog():
+    try:
+        with open(DISCOVERY_CATALOG_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+def load_discovered_publications():
+    try:
+        if os.path.exists(DISCOVERED_PUBLICATIONS_FILE):
+            with open(DISCOVERED_PUBLICATIONS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+def save_discovered_publications(items):
+    try:
+        items = sorted(items, key=lambda item: item.get('last_seen_at', ''), reverse=True)[:MAX_DISCOVERED_PUBLICATIONS]
+        with open(DISCOVERED_PUBLICATIONS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(items, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
 def get_publication_category(name, config):
     if name in config.get("jornais", []): return "Jornais"
     if name in config.get("revistas", []): return "Revistas"
     return None
+
+def normalize_match_text(value):
+    if not value:
+        return ""
+    normalized = unicodedata.normalize('NFC', value).lower()
+    normalized = normalized.replace('_', ' ').replace('.', ' ').replace('-', ' ')
+    normalized = re.sub(r'\s+', ' ', normalized)
+    return normalized.strip()
+
+def match_configured_publication(search_target, config):
+    normalized_target = normalize_match_text(search_target)
+    normalized_target_no_spaces = normalized_target.replace(' ', '')
+
+    for category_key in ("jornais", "revistas"):
+        for configured_name in config.get(category_key, []):
+            normalized_name = normalize_match_text(configured_name)
+            normalized_name_no_spaces = normalized_name.replace(' ', '')
+
+            if not normalized_name:
+                continue
+
+            if (
+                normalized_name in normalized_target or
+                normalized_name_no_spaces in normalized_target_no_spaces
+            ):
+                return unicodedata.normalize('NFC', configured_name)
+
+    return None
+
+def infer_country_and_category(title):
+    normalized_title = normalize_match_text(title)
+    normalized_title_no_spaces = normalized_title.replace(' ', '')
+
+    for entry in load_discovery_catalog():
+        for alias in entry.get('aliases', []):
+            normalized_alias = normalize_match_text(alias)
+            normalized_alias_no_spaces = normalized_alias.replace(' ', '')
+            if not normalized_alias:
+                continue
+            if normalized_alias in normalized_title or normalized_alias_no_spaces in normalized_title_no_spaces:
+                return {
+                    'country': entry.get('country', 'Unknown'),
+                    'suggested_category': entry.get('category'),
+                    'country_source': 'catalog',
+                }
+
+    return {
+        'country': 'Unknown',
+        'suggested_category': None,
+        'country_source': 'unknown',
+    }
+
+def upsert_discovered_publication(filename, title, caption, file_size, status, matched_category=None, message_id=None, telegram_date=None):
+    if not filename:
+        return
+
+    discovered = load_discovered_publications()
+    title = unicodedata.normalize('NFC', title or extract_publication_name(filename) or filename)
+    metadata = infer_country_and_category(title)
+    now = telegram_date.isoformat() if telegram_date else datetime.now().isoformat()
+    item_id = hashlib.md5(f"{filename}_{file_size}".encode()).hexdigest()
+    matched_category_value = None
+    if matched_category == 'Jornais':
+        matched_category_value = 'newspaper'
+    elif matched_category == 'Revistas':
+        matched_category_value = 'magazine'
+
+    existing = next((item for item in discovered if item.get('id') == item_id), None)
+    if existing:
+        existing['title'] = title
+        existing['caption'] = caption[:300] if caption else ''
+        existing['file_size'] = file_size
+        existing['status'] = status
+        existing['last_seen_at'] = now
+        existing['seen_count'] = int(existing.get('seen_count', 0)) + 1
+        existing['matched_category'] = matched_category_value or existing.get('matched_category')
+        existing['country'] = metadata['country'] if existing.get('country') in (None, '', 'Unknown') else existing.get('country')
+        existing['country_source'] = metadata['country_source'] if existing.get('country_source') in (None, '', 'unknown') else existing.get('country_source')
+        existing['suggested_category'] = matched_category_value or existing.get('suggested_category') or metadata['suggested_category']
+        if message_id is not None:
+            existing['message_id'] = message_id
+    else:
+        discovered.append({
+            'id': item_id,
+            'filename': filename,
+            'title': title,
+            'caption': caption[:300] if caption else '',
+            'file_size': file_size,
+            'status': status,
+            'first_seen_at': now,
+            'last_seen_at': now,
+            'seen_count': 1,
+            'message_id': message_id,
+            'matched_category': matched_category_value,
+            'suggested_category': matched_category_value or metadata['suggested_category'],
+            'country': metadata['country'],
+            'country_source': metadata['country_source'],
+        })
+
+    save_discovered_publications(discovered)
 
 def parse_filename(filename):
     if not filename: return None, None
@@ -211,6 +338,8 @@ async def process_message(message, client, config=None):
     fname = message.document.file_name or "unnamed.pdf"
     fsize = message.document.file_size
     caption = message.caption or ""
+    telegram_date = message.date
+    telegram_date_fmt = telegram_date.strftime('%d-%m-%Y') if telegram_date else None
     
     # Log every PDF found for transparency
     logger.info(f"🧐 Found PDF: {fname} ({fsize} bytes)")
@@ -218,9 +347,18 @@ async def process_message(message, client, config=None):
     
     # 1. Try standard parsing (format: (YYYYMMDD-PT) Name.pdf)
     pub_name, date_fmt = parse_filename(fname)
+    effective_date_fmt = date_fmt or telegram_date_fmt
     is_keyword_match = False
+    discovered_title = pub_name or extract_publication_name(fname) or fname
     
-    # 2. If not standard, try Keyword matching (Flexible)
+    # 2. If not standard, try direct matching against configured publication names
+    if not pub_name:
+        configured_match = match_configured_publication(f"{fname} {caption}", config)
+        if configured_match:
+            pub_name = configured_match
+            logger.info(f"📰 Match found via configured title '{configured_match}': {fname}")
+
+    # 3. If still not matched, try Keyword matching (Flexible)
     if not pub_name:
         # Create a clean string for matching: replace underscores, dots, hyphens with spaces
         search_target = f"{fname} {caption}".lower()
@@ -242,17 +380,19 @@ async def process_message(message, client, config=None):
                 logger.info(f"✨ Match found via keyword '{kw}': {fname}")
                 break
     
-    # 3. Handle No Match
+    # 4. Handle No Match
     if not pub_name:
+        upsert_discovered_publication(fname, discovered_title, caption, fsize, "unmatched", message_id=message.id, telegram_date=telegram_date)
         logger.info(f"⏭️ No match for: {fname}")
         return "skipped"
 
-    # 4. Check if already processed
-    if is_file_already_processed(fname, fsize, date_fmt):
+    # 5. Check if already processed
+    if is_file_already_processed(fname, fsize, effective_date_fmt):
+        upsert_discovered_publication(fname, pub_name or discovered_title, caption, fsize, "already_processed", message_id=message.id, telegram_date=telegram_date)
         logger.info(f"⏭️ Already processed: {fname}")
         return "skipped"
 
-    # 5. Download and Process
+    # 6. Download and Process
     download_path = os.path.join(DOWNLOADS_DIR, fname)
     try:
         logger.info(f"📥 Downloading: {fname}")
@@ -282,19 +422,21 @@ async def process_message(message, client, config=None):
         if cat:
             dest = os.path.join(DATA_DIR, cat)
             os.makedirs(dest, exist_ok=True)
-            # Use cleaner name if we have a date
-            final_name = f"{pub_name} - {date_fmt}.pdf" if date_fmt else fname
+            # Use Telegram upload date when the filename itself has no embedded date.
+            final_name = f"{pub_name} - {effective_date_fmt}.pdf" if effective_date_fmt else fname
             shutil.copy2(download_path, os.path.join(dest, final_name))
-            mark_file_as_processed(fname, fsize, date_fmt, "saved")
+            mark_file_as_processed(fname, fsize, effective_date_fmt, "saved")
             log_activity(final_name, cat)
+            upsert_discovered_publication(fname, pub_name, caption, fsize, "saved", matched_category=cat, message_id=message.id, telegram_date=telegram_date)
             logger.info(f"✅ Saved to {cat}: {final_name}")
             return "saved_cat"
         elif is_keyword_match:
             dest = os.path.join(DATA_DIR, 'Others')
             os.makedirs(dest, exist_ok=True)
             shutil.copy2(download_path, os.path.join(dest, fname))
-            mark_file_as_processed(fname, fsize, date_fmt, "saved_via_keyword")
+            mark_file_as_processed(fname, fsize, effective_date_fmt, "saved_via_keyword")
             log_activity(fname, "Others")
+            upsert_discovered_publication(fname, pub_name, caption, fsize, "saved_via_keyword", message_id=message.id, telegram_date=telegram_date)
             logger.info(f"✅ Keyword match '{pub_name}', saved to Others: {fname}")
             return "saved_keyword"
         else:
@@ -305,10 +447,12 @@ async def process_message(message, client, config=None):
             # Optional: Send to bot for interactive review if logic is present
             try:
                 await send_file_for_review(client, os.path.join(dest, fname))
-                mark_file_as_processed(fname, fsize, date_fmt, "sent_to_review")
+                mark_file_as_processed(fname, fsize, effective_date_fmt, "sent_to_review")
+                upsert_discovered_publication(fname, pub_name or discovered_title, caption, fsize, "sent_to_review", message_id=message.id, telegram_date=telegram_date)
                 return "sent_to_review"
             except:
-                mark_file_as_processed(fname, fsize, date_fmt, "saved_to_others")
+                mark_file_as_processed(fname, fsize, effective_date_fmt, "saved_to_others")
+                upsert_discovered_publication(fname, pub_name or discovered_title, caption, fsize, "saved_to_others", message_id=message.id, telegram_date=telegram_date)
                 return "saved_others"
             
             log_activity(fname, "Others")
@@ -316,9 +460,11 @@ async def process_message(message, client, config=None):
             
     except FloodWait as e:
         # If we still get FloodWait after retry, log and skip this file for now
+        upsert_discovered_publication(fname, pub_name or discovered_title, caption, fsize, "flood_wait", message_id=message.id, telegram_date=telegram_date)
         logger.error(f"⏳ FloodWait persists for {fname}. Skipping. Wait required: {e.value}s")
         return "flood_wait"
     except Exception as e:
+        upsert_discovered_publication(fname, pub_name or discovered_title, caption, fsize, "error", matched_category=cat if 'cat' in locals() else None, message_id=message.id, telegram_date=telegram_date)
         logger.error(f"❌ Download failed for {fname}: {e}")
         return "error"
     finally:

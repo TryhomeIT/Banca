@@ -17,7 +17,8 @@ from .file_watcher import (
     scan_all_folders,
     watch_folders,
     get_folder_stats,
-    import_pdf_to_database
+    import_pdf_to_database,
+    enforce_retention_policies
 )
 from .telegram_bot import (
     start_telegram_bot,

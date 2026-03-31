@@ -8,6 +8,7 @@ import logging
 import shutil
 import traceback
 import unicodedata
+import re
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -16,6 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..models import User, Publication, ReadingProgress
+from ..models import UserFavorite
 from ..services import (
     get_current_active_user, 
     scan_all_folders, 
@@ -23,11 +25,15 @@ from ..services import (
     start_telegram_bot,
     stop_telegram_bot,
     is_bot_running,
-    get_password_hash
+    get_password_hash,
+    enforce_retention_policies
 )
 from ..config import settings
+from ..services.file_watcher import delete_source_publication_file
 from ..services.settings import settings_service
 from ..services.pdf_service import generate_thumbnail
+from ..services.pdf_service import generate_thumbnail, delete_publication_files
+from ..services.wikidata import get_cached_wikidata_metadata, refresh_wikidata_cache_for_titles
 from ..database import SessionLocal, get_db
 from ..schemas.schemas import UserResponse
 
@@ -38,6 +44,8 @@ router = APIRouter(prefix="/api/admin", tags=["Admin"])
 PUBLICATIONS_CONFIG = Path(settings.TELEGRAM_DATA_DIR) / 'publications.json'
 SCAN_REQUEST_FILE = Path(settings.TELEGRAM_DATA_DIR) / 'scan_request.json'
 RUNNING_TASKS_FILE = Path(settings.TELEGRAM_DATA_DIR) / 'running_tasks.json'
+DISCOVERED_PUBLICATIONS_FILE = Path(settings.TELEGRAM_DATA_DIR) / 'discovered_publications.json'
+DISCOVERY_CATALOG_FILE = settings.BASE_DIR / 'app' / 'data' / 'publication_catalog.json'
 
 # --- Pydantic Models ---
 
@@ -99,6 +107,11 @@ class DeleteOthersRequest(BaseModel):
 class SystemSettingsRequest(BaseModel):
     settings: Dict[str, Any]
 
+class DiscoverResponse(BaseModel):
+    items: List[Dict[str, Any]]
+    countries: List[str]
+    summary: Dict[str, int]
+
 class UserCreateRequest(BaseModel):
     username: str
     email: str
@@ -109,6 +122,10 @@ class UserUpdateRequest(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
     is_admin: Optional[bool] = None
+
+class StopDownloadingTitleRequest(BaseModel):
+    title: str
+    category: Optional[str] = None
 
 # --- Helper Functions ---
 
@@ -173,11 +190,165 @@ def complete_task(task_name: str):
 def is_task_running(task_name: str) -> bool:
     return task_name in load_running_tasks()
 
+def normalize_discovery_text(value: str) -> str:
+    if not value:
+        return ""
+    normalized = unicodedata.normalize('NFC', value).lower()
+    normalized = normalized.replace('_', ' ').replace('.', ' ').replace('-', ' ')
+    normalized = re.sub(r'\s+', ' ', normalized)
+    return normalized.strip()
+
+def load_discovered_publications() -> List[Dict[str, Any]]:
+    try:
+        if DISCOVERED_PUBLICATIONS_FILE.exists():
+            with open(DISCOVERED_PUBLICATIONS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+    except Exception:
+        pass
+    return []
+
+def load_discovery_catalog() -> List[Dict[str, Any]]:
+    try:
+        if DISCOVERY_CATALOG_FILE.exists():
+            with open(DISCOVERY_CATALOG_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+    except Exception:
+        pass
+    return []
+
+def infer_discovery_metadata(title: str) -> Dict[str, Optional[str]]:
+    normalized_title = normalize_discovery_text(title)
+    normalized_title_no_spaces = normalized_title.replace(' ', '')
+
+    for entry in load_discovery_catalog():
+        for alias in entry.get('aliases', []):
+            normalized_alias = normalize_discovery_text(alias)
+            normalized_alias_no_spaces = normalized_alias.replace(' ', '')
+            if not normalized_alias:
+                continue
+            if normalized_alias in normalized_title or normalized_alias_no_spaces in normalized_title_no_spaces:
+                return {
+                    'country': entry.get('country', 'Unknown'),
+                    'suggested_category': entry.get('category'),
+                    'country_source': 'catalog',
+                }
+
+    wikidata_metadata = get_cached_wikidata_metadata(title)
+    if wikidata_metadata:
+        return {
+            'country': wikidata_metadata.get('country', 'Unknown'),
+            'suggested_category': wikidata_metadata.get('suggested_category'),
+            'country_source': wikidata_metadata.get('country_source', 'wikidata'),
+        }
+
+    return {
+        'country': 'Unknown',
+        'suggested_category': None,
+        'country_source': 'unknown',
+    }
+
 # --- Endpoints ---
 
 @router.get("/tasks/status")
 async def get_running_tasks(current_user: User = Depends(require_admin)):
     return {"running_tasks": load_running_tasks()}
+
+@router.get("/discover", response_model=DiscoverResponse)
+async def get_discovered_catalog(current_user: User = Depends(require_admin)):
+    config = load_publications_config()
+    discovered_publications = load_discovered_publications()
+    refresh_wikidata_cache_for_titles(item.get('title') or item.get('filename') or '' for item in discovered_publications)
+    selected_newspapers = {normalize_discovery_text(item) for item in config.get('jornais', [])}
+    selected_magazines = {normalize_discovery_text(item) for item in config.get('revistas', [])}
+
+    grouped_items: Dict[str, Dict[str, Any]] = {}
+    countries = set()
+
+    for item in discovered_publications:
+        title = unicodedata.normalize('NFC', item.get('title') or item.get('filename') or 'Unknown')
+        metadata = infer_discovery_metadata(title)
+        normalized_title = normalize_discovery_text(title)
+
+        selected_category = None
+        if normalized_title in selected_newspapers:
+            selected_category = 'newspaper'
+        elif normalized_title in selected_magazines:
+            selected_category = 'magazine'
+
+        country = item.get('country') or metadata['country'] or 'Unknown'
+        countries.add(country)
+        group_key = normalize_discovery_text(title)
+        record_date = item.get('last_seen_at') or item.get('first_seen_at')
+        record_day = None
+        if record_date:
+            try:
+                record_day = datetime.fromisoformat(record_date).date().isoformat()
+            except ValueError:
+                record_day = str(record_date)[:10]
+
+        if group_key not in grouped_items:
+            grouped_items[group_key] = {
+                'id': group_key,
+                'title': title,
+                'filename': item.get('filename'),
+                'caption': item.get('caption') or '',
+                'file_size': item.get('file_size') or 0,
+                'status': item.get('status') or 'seen',
+                'seen_count': int(item.get('seen_count') or 1),
+                'file_count': 1,
+                'first_seen_at': item.get('first_seen_at'),
+                'last_seen_at': item.get('last_seen_at'),
+                'country': country,
+                'country_source': item.get('country_source') or metadata['country_source'],
+                'suggested_category': item.get('suggested_category') or item.get('matched_category') or metadata['suggested_category'],
+                'selected_category': selected_category,
+                'available_dates': [record_day] if record_day else [],
+            }
+            continue
+
+        group = grouped_items[group_key]
+        group['file_count'] += 1
+        group['seen_count'] += int(item.get('seen_count') or 1)
+
+        if record_day and record_day not in group['available_dates']:
+            group['available_dates'].append(record_day)
+
+        existing_last_seen = group.get('last_seen_at')
+        if item.get('last_seen_at') and ((not existing_last_seen) or item['last_seen_at'] > existing_last_seen):
+            group['last_seen_at'] = item.get('last_seen_at')
+            group['filename'] = item.get('filename')
+            group['caption'] = item.get('caption') or group.get('caption') or ''
+            group['status'] = item.get('status') or group.get('status') or 'seen'
+            group['file_size'] = item.get('file_size') or group.get('file_size') or 0
+
+        if item.get('first_seen_at') and ((not group.get('first_seen_at')) or item['first_seen_at'] < group['first_seen_at']):
+            group['first_seen_at'] = item.get('first_seen_at')
+
+        if not group.get('selected_category') and selected_category:
+            group['selected_category'] = selected_category
+
+        if not group.get('suggested_category') and (item.get('suggested_category') or item.get('matched_category') or metadata['suggested_category']):
+            group['suggested_category'] = item.get('suggested_category') or item.get('matched_category') or metadata['suggested_category']
+
+    items = list(grouped_items.values())
+    for item in items:
+        item['available_dates'] = sorted(item.get('available_dates', []), reverse=True)
+
+    items.sort(key=lambda record: ((record.get('country') or 'Unknown').lower(), -(datetime.fromisoformat(record['last_seen_at']).timestamp() if record.get('last_seen_at') else 0), (record.get('title') or '').lower()))
+
+    selected_count = sum(1 for item in items if item.get('selected_category'))
+
+    return DiscoverResponse(
+        items=items,
+        countries=sorted(countries),
+        summary={
+            'total': len(items),
+            'countries': len(countries),
+            'selected': selected_count,
+        }
+    )
 
 @router.post("/scan", response_model=ScanResponse)
 async def trigger_folder_scan(force: bool = Query(False), current_user: User = Depends(require_admin)):
@@ -234,6 +405,47 @@ async def remove_publication_item(request: RemoveItemRequest, db: Session = Depe
             if request.item not in config['ignored']: config['ignored'].append(request.item)
         save_publications_config(config)
     return {"message": "Success"}
+
+@router.post("/publications/stop-downloading")
+async def stop_downloading_title(request: StopDownloadingTitleRequest, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    title = unicodedata.normalize('NFC', request.title).strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Title is required")
+
+    config = load_publications_config()
+    removed_from = []
+    for config_key in ['jornais', 'revistas', 'keywords']:
+        if title in config.get(config_key, []):
+            config[config_key].remove(title)
+            removed_from.append(config_key)
+
+    if title not in config.get('ignored', []):
+        config.setdefault('ignored', []).append(title)
+
+    save_publications_config(config)
+
+    publications = db.query(Publication).filter(Publication.title == title).all()
+    deleted_count = 0
+    for publication in publications:
+        db.query(ReadingProgress).filter(
+            ReadingProgress.publication_id == publication.id
+        ).delete(synchronize_session=False)
+        delete_publication_files(publication.filename, publication.thumbnail_path)
+        if publication.category in {'newspaper', 'magazine'}:
+            delete_source_publication_file(publication.original_filename, publication.category)
+        db.delete(publication)
+        deleted_count += 1
+
+    db.query(UserFavorite).filter(UserFavorite.publication_title == title).delete(synchronize_session=False)
+    db.commit()
+
+    return {
+        "message": "Title removed from downloads and existing files deleted",
+        "title": title,
+        "removed_from": removed_from,
+        "deleted_publications": deleted_count,
+        "ignored": True,
+    }
 
 @router.post("/publications/move")
 async def move_publication_category(request: MoveItemRequest, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
@@ -556,6 +768,8 @@ async def update_system_settings(request: SystemSettingsRequest, current_user: U
             cat = "telegram" if k.startswith("TELEGRAM_") else "ai" if k.startswith("GEMINI_") else "general"
             settings_service.set_setting(db, k, str(v), category=cat)
             updated.append(k)
+        if any(k in {"DOWNLOADS_RETENTION_DAYS_JORNAIS", "DOWNLOADS_RETENTION_DAYS_REVISTAS"} for k in updated):
+            enforce_retention_policies(db)
         if any(k.startswith("TELEGRAM_") for k in updated) and is_bot_running():
             await stop_telegram_bot(); await start_telegram_bot()
         return {"message": "Updated", "updated": updated}
