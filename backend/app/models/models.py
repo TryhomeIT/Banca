@@ -28,7 +28,8 @@ class Publication(Base):
     file_path = Column(String(500), nullable=False)
     page_count = Column(Integer, default=0)
     file_size = Column(Integer, default=0)  # in bytes
-    category = Column(String(100), nullable=True)  # newspaper, magazine, etc.
+    category = Column(String(100), nullable=True)  # newspaper, magazine, book, etc.
+    collection_name = Column(String(255), nullable=True) # group for comic books
     publication_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

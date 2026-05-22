@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     procps \
     poppler-utils \
+    unar \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && rm -rf /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*

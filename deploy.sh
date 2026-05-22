@@ -95,15 +95,31 @@ rm ${ARCHIVE_NAME}
 echo "🧹 Cleaning up server archive..."
 sshpass -p "${SERVER_PASS}" ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER} "rm /tmp/${ARCHIVE_NAME}"
 
-echo ""
-echo "✅ Deployment Complete!"
-echo ""
-echo "📋 Image is loaded on server but NOT applied"
-echo ""
-echo "To apply on server:"
-echo "  ssh ${SERVER_USER}@${SERVER}"
-echo "  mkdir -p ~/banca && mv /tmp/docker-compose.yml ~/banca/"
-echo "  cd ~/banca"
-echo "  docker-compose down"
-echo "  docker-compose up -d"
+# Trigger Komodo Redeploy
+echo "🚀 Triggering Komodo redeploy for stack banca..."
+
+KOMODO_API_KEY="K-nEVGtzkgBAmFcnn2auXFMILESRXPpMnpWJTU9Q3c"
+KOMODO_API_SECRET="S-v05Puahl5Uf2762POupfmEephq4D23M7xtByEbBh"
+
+sshpass -p "${SERVER_PASS}" ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER} \
+  KOMODO_CORE_CONTAINER="komodo-core-1" \
+  KOMODO_STACK_NAME="banca" \
+  KOMODO_HOST="https://komodo.local.tryhomeit.com" \
+  KOMODO_API_KEY="$KOMODO_API_KEY" \
+  KOMODO_API_SECRET="$KOMODO_API_SECRET" \
+  bash -s <<'REMOTE'
+set -euo pipefail
+if ! docker inspect "$KOMODO_CORE_CONTAINER" >/dev/null 2>&1; then
+  echo "Komodo core container '$KOMODO_CORE_CONTAINER' was not found on the remote host." >&2
+  exit 1
+fi
+docker exec "$KOMODO_CORE_CONTAINER" /usr/local/bin/km execute -a "$KOMODO_HOST" -k "$KOMODO_API_KEY" -s "$KOMODO_API_SECRET" -y deploy-stack "$KOMODO_STACK_NAME"
+REMOTE
+
+if [ $? -ne 0 ]; then
+    echo "❌ Komodo redeploy failed!"
+    exit 1
+fi
+
+echo "✅ Deployment Complete via Komodo!"
 echo ""

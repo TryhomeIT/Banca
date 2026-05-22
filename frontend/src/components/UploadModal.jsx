@@ -2,10 +2,11 @@ import { useState, useRef } from 'react';
 import api from '../services/api';
 
 const UploadModal = ({ onClose, onSuccess }) => {
-    const [file, setFile] = useState(null);
-    const [title, setTitle] = useState('');
+    const [files, setFiles] = useState([]);
     const [category, setCategory] = useState('newspaper');
     const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+    const [fileProgress, setFileProgress] = useState(0);
     const [error, setError] = useState('');
     const [dragActive, setDragActive] = useState(false);
     const fileInputRef = useRef(null);
@@ -25,46 +26,64 @@ const UploadModal = ({ onClose, onSuccess }) => {
         e.stopPropagation();
         setDragActive(false);
 
-        const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile && droppedFile.type === 'application/pdf') {
-            setFile(droppedFile);
-            if (!title) {
-                setTitle(droppedFile.name.replace('.pdf', ''));
-            }
+        const droppedFiles = Array.from(e.dataTransfer.files).filter(f => 
+            f.type === 'application/pdf' || 
+            f.name.toLowerCase().endsWith('.cbz') || 
+            f.name.toLowerCase().endsWith('.cbr')
+        );
+        if (droppedFiles.length > 0) {
+            setFiles(prev => [...prev, ...droppedFiles]);
+            setError('');
         } else {
-            setError('Please drop a PDF file');
+            setError('Please drop valid PDF, CBZ, or CBR files');
         }
     };
 
     const handleFileSelect = (e) => {
-        const selectedFile = e.target.files[0];
-        if (selectedFile) {
-            setFile(selectedFile);
-            if (!title) {
-                setTitle(selectedFile.name.replace('.pdf', ''));
-            }
+        const selectedFiles = Array.from(e.target.files).filter(f => 
+            f.type === 'application/pdf' || 
+            f.name.toLowerCase().endsWith('.cbz') || 
+            f.name.toLowerCase().endsWith('.cbr')
+        );
+        if (selectedFiles.length > 0) {
+            setFiles(prev => [...prev, ...selectedFiles]);
+            setError('');
         }
+    };
+
+    const removeFile = (indexToRemove) => {
+        setFiles(files.filter((_, index) => index !== indexToRemove));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!file || !title.trim()) {
-            setError('Please select a file and enter a title');
+        if (files.length === 0) {
+            setError('Please select at least one file');
             return;
         }
 
         setError('');
         setUploading(true);
+        setUploadProgress({ current: 0, total: files.length });
 
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('title', title.trim());
-            formData.append('category', category);
+            for (let i = 0; i < files.length; i++) {
+                setUploadProgress(prev => ({ ...prev, current: i + 1 }));
+                setFileProgress(0);
 
-            await api.post('/publications/', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+                const formData = new FormData();
+                formData.append('file', files[i]);
+                // We omit title so the backend extracts it
+                formData.append('category', category);
+
+                await api.post('/publications/', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    onUploadProgress: (progressEvent) => {
+                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        setFileProgress(percentCompleted);
+                    }
+                });
+            }
 
             onSuccess();
         } catch (err) {
@@ -108,58 +127,51 @@ const UploadModal = ({ onClose, onSuccess }) => {
                             <input
                                 ref={fileInputRef}
                                 type="file"
-                                accept=".pdf,application/pdf"
+                                accept=".pdf,application/pdf,.cbz,.cbr"
+                                multiple
                                 onChange={handleFileSelect}
                                 style={{ display: 'none' }}
                             />
 
-                            {!file ? (
+                            {files.length === 0 ? (
                                 <>
                                     <div className="dropzone-icon">📄</div>
                                     <p className="dropzone-text">
-                                        Drag and drop your PDF here
+                                        Drag and drop PDF, CBZ, or CBR files here
                                     </p>
                                     <p className="dropzone-hint">
                                         or click to browse
                                     </p>
                                 </>
                             ) : (
-                                <div className="dropzone-file" onClick={e => e.stopPropagation()}>
-                                    <span className="dropzone-file-icon">📰</span>
-                                    <span className="dropzone-file-name">{file.name}</span>
-                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                                        {formatFileSize(file.size)}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        className="dropzone-file-remove"
-                                        onClick={() => setFile(null)}
-                                    >
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M18 6L6 18M6 6l12 12" />
-                                        </svg>
-                                    </button>
+                                <div className="dropzone-file-list" onClick={e => e.stopPropagation()}>
+                                    {files.map((file, idx) => (
+                                        <div key={idx} className="dropzone-file">
+                                            <span className="dropzone-file-icon">📰</span>
+                                            <span className="dropzone-file-name">{file.name}</span>
+                                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                                                {formatFileSize(file.size)}
+                                            </span>
+                                            {!uploading && (
+                                                <button
+                                                    type="button"
+                                                    className="dropzone-file-remove"
+                                                    onClick={() => removeFile(idx)}
+                                                >
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M18 6L6 18M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
 
-                        {/* Title Input */}
-                        <div className="input-group" style={{ marginTop: '1rem' }}>
-                            <label htmlFor="title">Title</label>
-                            <input
-                                id="title"
-                                type="text"
-                                className="input"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Publication title"
-                                required
-                            />
-                        </div>
-
                         {/* Category Select */}
-                        <div className="input-group">
-                            <label htmlFor="category">Category</label>
+                        <div className="input-group" style={{ marginTop: '1rem' }}>
+                            <label htmlFor="category">Default Category (Auto-overridden for comics)</label>
                             <select
                                 id="category"
                                 className="input"
@@ -168,6 +180,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
                             >
                                 <option value="newspaper">Newspaper</option>
                                 <option value="magazine">Magazine</option>
+                                <option value="book">Book</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
@@ -180,9 +193,24 @@ const UploadModal = ({ onClose, onSuccess }) => {
                         <button
                             type="submit"
                             className="btn btn-primary"
-                            disabled={uploading || !file}
+                            disabled={uploading || files.length === 0}
+                            style={{ position: 'relative', overflow: 'hidden' }}
                         >
-                            {uploading ? 'Uploading...' : 'Upload'}
+                            {uploading && (
+                                <div style={{ 
+                                    position: 'absolute', left: 0, top: 0, bottom: 0, 
+                                    width: `${fileProgress}%`, 
+                                    backgroundColor: 'rgba(255,255,255,0.2)',
+                                    transition: 'width 0.2s ease' 
+                                }} />
+                            )}
+                            <span style={{ position: 'relative', zIndex: 1 }}>
+                                {uploading 
+                                    ? fileProgress === 100 
+                                        ? `Processing (${uploadProgress.current}/${uploadProgress.total})...`
+                                        : `Uploading (${uploadProgress.current}/${uploadProgress.total}) - ${fileProgress}%` 
+                                    : `Upload ${files.length > 0 ? files.length + ' Files' : ''}`}
+                            </span>
                         </button>
                     </div>
                 </form>

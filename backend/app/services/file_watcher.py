@@ -331,14 +331,40 @@ def import_pdf_to_database(file_path: str, category: str) -> Optional[Publicatio
         pub_date = parse_publication_date(filename) or derive_publication_date(file_path)
         file_size = os.path.getsize(file_path)
         
+        # Extract collection name for books if present
+        import re
+        collection_name = None
+        if category == 'book':
+            match = re.search(r'\{([^}]+)\}', filename)
+            if match:
+                collection_name = match.group(1).strip()
+                title = re.sub(r'\{[^}]+\}', '', title).strip()
+        
         # Copy to uploads folder - Use UUID for absolute uniqueness
         unique_suffix = str(uuid.uuid4())[:8]
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        unique_filename = f"{timestamp}_{unique_suffix}_{filename}"
+        
+        from .comic_converter import is_comic_archive, convert_comic_to_pdf
+        is_comic = is_comic_archive(filename)
+        
+        dest_filename = filename
+        if is_comic:
+            dest_filename = filename.rsplit('.', 1)[0] + '.pdf'
+            
+        unique_filename = f"{timestamp}_{unique_suffix}_{dest_filename}"
         dest_path = settings.UPLOAD_DIR / unique_filename
         
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-        shutil.copy2(file_path, dest_path)
+        
+        if is_comic:
+            success = convert_comic_to_pdf(file_path, str(dest_path))
+            if not success:
+                logger.error(f"Failed to convert comic {filename} to PDF")
+                return None
+            # Re-read file size after conversion
+            file_size = os.path.getsize(dest_path)
+        else:
+            shutil.copy2(file_path, dest_path)
         
         # Generate thumbnail
         thumbnail_path, page_count = generate_thumbnail(
@@ -356,6 +382,7 @@ def import_pdf_to_database(file_path: str, category: str) -> Optional[Publicatio
             page_count=page_count,
             file_size=file_size,
             category=category,
+            collection_name=collection_name,
             publication_date=pub_date
         )
         
@@ -380,7 +407,8 @@ def scan_folder(folder_path: str, category: str) -> int:
     
     imported = 0
     for filename in os.listdir(folder_path):
-        if not filename.lower().endswith('.pdf'):
+        ext = filename.lower()
+        if not (ext.endswith('.pdf') or ext.endswith('.cbz') or ext.endswith('.cbr') or ext.endswith('.zip') or ext.endswith('.rar')):
             continue
         
         file_path = os.path.join(folder_path, filename)
@@ -439,7 +467,7 @@ def get_folder_stats() -> Dict[str, Any]:
     stats = {}
     for folder, name in [(JORNAIS_FOLDER, 'jornais'), (REVISTAS_FOLDER, 'revistas'), (OTHERS_FOLDER, 'others')]:
         if os.path.exists(folder):
-            files = [f for f in os.listdir(folder) if f.lower().endswith('.pdf')]
+            files = [f for f in os.listdir(folder) if f.lower().endswith(('.pdf', '.cbz', '.cbr', '.zip', '.rar'))]
             total_size = sum(os.path.getsize(os.path.join(folder, f)) for f in files)
             stats[name] = {
                 'count': len(files),

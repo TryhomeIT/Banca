@@ -3,7 +3,7 @@ import logging
 from typing import List, Optional
 from datetime import datetime, date, timedelta
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, case
@@ -210,28 +210,93 @@ async def get_publication(
     
     return PublicationWithProgress(**pub_dict)
 
+def process_comic_background(file_path: str, filename: str, pub_id: int):
+    """Background task to convert comic to PDF and update database."""
+    from ..services.comic_converter import convert_comic_to_pdf
+    from ..services.pdf_service import generate_thumbnail
+    from ..database import SessionLocal
+    import os
+    
+    dest_pdf_path = file_path.rsplit('.', 1)[0] + '.pdf'
+    success = convert_comic_to_pdf(file_path, dest_pdf_path)
+    
+    if not success:
+        try: os.remove(file_path)
+        except: pass
+        return
+        
+    try: os.remove(file_path)
+    except: pass
+        
+    final_file_path = dest_pdf_path
+    final_filename = filename.rsplit('.', 1)[0] + '.pdf'
+    
+    thumbnail_path, page_count = generate_thumbnail(final_file_path, final_filename.rsplit('.', 1)[0])
+    
+    db = SessionLocal()
+    try:
+        pub = db.query(Publication).filter(Publication.id == pub_id).first()
+        if pub:
+            pub.filename = final_filename
+            pub.file_path = final_file_path
+            pub.thumbnail_path = thumbnail_path
+            pub.page_count = page_count
+            pub.file_size = os.path.getsize(final_file_path)
+            db.commit()
+    finally:
+        db.close()
+
+
 @router.post("/", response_model=PublicationResponse)
 async def upload_publication(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    title: str = Form(...),
+    title: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     publication_date: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """Upload a new publication."""
-    if not file.filename.lower().endswith('.pdf'):
+    valid_extensions = {'.pdf', '.cbz', '.cbr', '.zip', '.rar'}
+    ext = file.filename.lower()
+    if not any(ext.endswith(e) for e in valid_extensions):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are allowed"
+            detail="Only PDF, CBZ, and CBR files are allowed"
         )
     
-    # Save file
+    import re
+    collection_name = None
+    
+    from ..services.comic_converter import is_comic_archive
+    is_comic = is_comic_archive(file.filename)
+    
+    match = re.search(r'\{([^}]+)\}', file.filename)
+    if match:
+        category = 'book'
+        collection_name = match.group(1).strip()
+        
+    if is_comic:
+        category = 'book'
+        
+    if not title:
+        from ..services.file_watcher import extract_publication_name
+        title = extract_publication_name(file.filename)
+        
+    if collection_name:
+        title = re.sub(r'\{[^}]+\}', '', title).strip()
+    
+    # Save file temporarily or permanently
     file_content = await file.read()
     filename, file_path = save_uploaded_file(file_content, file.filename)
     
-    # Generate thumbnail and get page count
-    thumbnail_path, page_count = generate_thumbnail(file_path, filename.rsplit('.', 1)[0])
+    # Generate thumbnail immediately for PDFs
+    thumbnail_path = None
+    page_count = 0
+    if not is_comic:
+        from ..services.pdf_service import generate_thumbnail
+        thumbnail_path, page_count = generate_thumbnail(file_path, filename.rsplit('.', 1)[0])
     
     # Parse publication date if provided
     pub_date = None
@@ -243,7 +308,7 @@ async def upload_publication(
     if pub_date is None:
         pub_date = datetime.utcnow()
     
-    # Create publication record
+    # Create publication record (temporary values if it's a comic)
     publication = Publication(
         title=title,
         filename=filename,
@@ -251,14 +316,20 @@ async def upload_publication(
         thumbnail_path=thumbnail_path,
         file_path=file_path,
         page_count=page_count,
-        file_size=len(file_content),
-        category=category,
-        publication_date=pub_date
+        file_size=len(file_content) if not is_comic else 0, # Temporarily 0 for comics until converted
+        category=category or 'newspaper',
+        collection_name=collection_name,
+        publication_date=pub_date,
+        created_at=datetime.utcnow()
     )
-    
     db.add(publication)
     db.commit()
     db.refresh(publication)
+    
+    # Dispatch background task for comics
+    if is_comic:
+        background_tasks.add_task(process_comic_background, file_path, filename, publication.id)
+    
     
 
 

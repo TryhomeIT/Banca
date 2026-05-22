@@ -34,6 +34,7 @@ class TokenData(BaseModel):
 class PublicationBase(BaseModel):
     title: str
     category: Optional[str] = None
+    collection_name: Optional[str] = None
     publication_date: Optional[datetime] = None
 
 class PublicationCreate(PublicationBase):

@@ -71,8 +71,9 @@ const Dashboard = () => {
     };
 
     const categories = [
-        { id: 'newspaper', label: t('dashboard.newspapers') },
-        { id: 'magazine', label: t('dashboard.magazines') },
+        { id: 'newspaper', label: t('dashboard.newspapers') || 'Newspapers' },
+        { id: 'magazine', label: t('dashboard.magazines') || 'Magazines' },
+        { id: 'book', label: t('dashboard.books') || 'Books' },
     ];
 
     if (loading && publications.length === 0) {
@@ -133,15 +134,61 @@ const Dashboard = () => {
                                     ))}
                                 </div>
 
-                                <div className="publication-grid">
-                                    {publications.map(pub => (
-                                        <PublicationCard
-                                            key={pub.id}
-                                            publication={pub}
-                                            onClick={() => handleOpenReader(pub.id)}
-                                        />
-                                    ))}
-                                </div>
+                                {activeCategory === 'book' ? (
+                                    <div className="books-container">
+                                        {(() => {
+                                            const collections = {};
+                                            const ungrouped = [];
+                                            publications.forEach(pub => {
+                                                if (pub.collection_name) {
+                                                    if (!collections[pub.collection_name]) collections[pub.collection_name] = [];
+                                                    collections[pub.collection_name].push(pub);
+                                                } else {
+                                                    ungrouped.push(pub);
+                                                }
+                                            });
+
+                                            return (
+                                                <>
+                                                    {Object.keys(collections).map(collectionName => (
+                                                        <div key={collectionName} className="book-collection" style={{ marginBottom: '2rem' }}>
+                                                            <h3 className="section-title" style={{ fontSize: '1.25rem', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>{collectionName}</h3>
+                                                            <div className="publication-grid">
+                                                                {collections[collectionName].map(pub => (
+                                                                    <PublicationCard key={pub.id} publication={pub} onClick={() => handleOpenReader(pub.id)} />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {ungrouped.length > 0 && (
+                                                        <div className="book-collection">
+                                                            {Object.keys(collections).length > 0 && (
+                                                                <h3 className="section-title" style={{ fontSize: '1.25rem', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                                                                    {t('dashboard.otherBooks') || 'Other Books'}
+                                                                </h3>
+                                                            )}
+                                                            <div className="publication-grid">
+                                                                {ungrouped.map(pub => (
+                                                                    <PublicationCard key={pub.id} publication={pub} onClick={() => handleOpenReader(pub.id)} />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                ) : (
+                                    <div className="publication-grid">
+                                        {publications.map(pub => (
+                                            <PublicationCard
+                                                key={pub.id}
+                                                publication={pub}
+                                                onClick={() => handleOpenReader(pub.id)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </section>
                         </>
                     ) : (

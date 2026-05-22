@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import siteLogo from '../assets/site_logo.png';
+import UploadModal from './UploadModal';
 
-const Header = ({ searchQuery, onSearchChange }) => {
+const Header = ({ searchQuery, onSearchChange, onUploadSuccess }) => {
     const { user, logout } = useAuth();
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
@@ -13,6 +14,7 @@ const Header = ({ searchQuery, onSearchChange }) => {
     const [showLangMenu, setShowLangMenu] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [showUploadModal, setShowUploadModal] = useState(false);
     const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -129,6 +131,21 @@ const Header = ({ searchQuery, onSearchChange }) => {
                                 ⭐
                             </button>
 
+                            {/* Upload Button */}
+                            {user?.is_admin && (
+                                <button
+                                    className="btn btn-secondary btn-icon"
+                                    onClick={() => setShowUploadModal(true)}
+                                    title="Upload Publication"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
+                                </button>
+                            )}
+
                             {/* Settings Button */}
                             {user?.is_admin && (
                                 <button
@@ -203,6 +220,13 @@ const Header = ({ searchQuery, onSearchChange }) => {
                         <span>🔑</span>
                         {t('auth.changePassword') || 'Change Password'}
                     </button>
+
+                    {user?.is_admin && (
+                        <button className="mobile-drawer-item" onClick={() => { setShowUploadModal(true); setIsMenuOpen(false); }}>
+                            <span>📤</span>
+                            {t('dashboard.upload') || 'Upload Publication'}
+                        </button>
+                    )}
 
                     <button className="mobile-drawer-item" onClick={() => { navigate('/favorites'); setIsMenuOpen(false); }}>
                         <span>⭐</span>
@@ -306,6 +330,16 @@ const Header = ({ searchQuery, onSearchChange }) => {
                         </form>
                     </div>
                 </div>
+            )}
+            {/* Upload Modal */}
+            {showUploadModal && (
+                <UploadModal
+                    onClose={() => setShowUploadModal(false)}
+                    onSuccess={() => {
+                        setShowUploadModal(false);
+                        if (onUploadSuccess) onUploadSuccess();
+                    }}
+                />
             )}
         </>
     );

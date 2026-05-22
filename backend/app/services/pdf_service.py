@@ -2,7 +2,7 @@ import os
 import uuid
 from pathlib import Path
 from typing import Optional, Tuple
-from pdf2image import convert_from_path
+from pdf2image import convert_from_path, pdfinfo_from_path
 from pdf2image.exceptions import PDFInfoNotInstalledError, PDFPageCountError
 from PIL import Image
 
@@ -26,9 +26,9 @@ def generate_thumbnail(pdf_path: str, output_filename: str) -> Tuple[Optional[st
         if not images:
             return None, 0
         
-        # Get page count
-        all_pages = convert_from_path(pdf_path, dpi=20)  # Low DPI just to count
-        page_count = len(all_pages)
+        # Get page count using pdfinfo instead of extracting all pages
+        info = pdfinfo_from_path(pdf_path)
+        page_count = info.get("Pages", 1)
         
         # Process thumbnail
         thumbnail = images[0]
@@ -55,8 +55,8 @@ def generate_thumbnail(pdf_path: str, output_filename: str) -> Tuple[Optional[st
 def get_page_count(pdf_path: str) -> int:
     """Get the number of pages in a PDF."""
     try:
-        images = convert_from_path(pdf_path, dpi=20)
-        return len(images)
+        info = pdfinfo_from_path(pdf_path)
+        return info.get("Pages", 0)
     except Exception:
         return 0
 
